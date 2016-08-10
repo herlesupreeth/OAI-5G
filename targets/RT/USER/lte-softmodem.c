@@ -124,6 +124,11 @@ unsigned short config_frames[4] = {2,9,11,13};
 # endif
 #endif
 
+#if defined (ENB_AGENT)
+# include "emage.h"
+#include "emoai.h"
+#endif
+
 #ifdef XFORMS
 #include "PHY/TOOLS/lte_phy_scope.h"
 #include "stats.h"
@@ -444,6 +449,13 @@ void signal_handler(int sig)
     printf("trying to exit gracefully...\n");
     oai_exit = 1;
   }
+
+#if defined (ENB_AGENT)
+  if(signal == SIGINT) {
+    /* Stop the agent processing. */
+    em_stop();
+  }
+#endif
 }
 #endif
 #define KNRM  "\x1B[0m"
@@ -3447,6 +3459,12 @@ int main( int argc, char **argv )
 	  0); // HO flag
   
   mac_xface->macphy_exit = &exit_fun;
+
+#if defined (ENB_AGENT)
+  const Enb_properties_array_t* enb_properties = enb_config_get();
+  // Only one module is supported in OAI i.e (mod_id 0)
+  em_start(&sim_ops, enb_properties->properties[0]->eNB_id);
+#endif
 
 #if defined(ENABLE_ITTI)
 
