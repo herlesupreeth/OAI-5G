@@ -1,0 +1,6 @@
+
+	Empower eNB Controller simulator
+
+This is a fake Empower controller which allows to generate some request to 
+connected agents. This way you can test the agent operativity without setting up
+a real controller.
