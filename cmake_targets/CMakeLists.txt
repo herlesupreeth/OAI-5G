@@ -846,6 +846,46 @@ include_directories("${OPENAIR3_DIR}/GTPV1-U/nw-gtpv1u/shared")
 include_directories("${OPENAIR3_DIR}/GTPV1-U/nw-gtpv1u/include")
 include_directories("${OPENAIR_DIR}")
 
+# CNET EMAGE Library
+#####################
+Message("ENB_AGENT flag  is ${ENB_AGENT}")
+
+if (ENB_AGENT)
+
+  set(CNET_EMAGE_DIR ${OPENAIR_DIR}/emage)
+  set(CNET_EMAGE_INC_DIR ${CNET_EMAGE_DIR}/include)
+  set(CNET_EMAGE_PROTO_DIR ${OPENAIR_DIR}/emage/proto)
+  set(CNET_EMAGE_PROTO_H_DIR ${CNET_EMAGE_PROTO_DIR}/pb)
+  set(CNET_EMAGE_PROTO_C_DIR ${CNET_EMAGE_PROTO_DIR}/pb)
+  set(CNET_EMAGE_AGENT_DIR ${OPENAIR_DIR}/emage/agent)
+  set(CNET_EMAGE_TECH_OAI_DIR ${CNET_EMAGE_DIR}/tech/oai)
+
+  include_directories (${CNET_EMAGE_INC_DIR})
+  include_directories (${CNET_EMAGE_PROTO_H_DIR})
+  include_directories (${CNET_EMAGE_TECH_OAI_DIR})
+
+  add_library(ENB_AGENT
+    ${CNET_EMAGE_PROTO_C_DIR}/hello.pb-c.c
+    ${CNET_EMAGE_PROTO_C_DIR}/statistics.pb-c.c
+    ${CNET_EMAGE_PROTO_C_DIR}/configs.pb-c.c
+    ${CNET_EMAGE_PROTO_C_DIR}/main.pb-c.c
+    ${CNET_EMAGE_AGENT_DIR}/core.c
+    ${CNET_EMAGE_AGENT_DIR}/net.c
+    ${CNET_EMAGE_AGENT_DIR}/msg.c
+    ${CNET_EMAGE_AGENT_DIR}/sched.c
+    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_common.c
+    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_layer2.c
+    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_config.c
+    ${CNET_EMAGE_TECH_OAI_DIR}/emoai.c
+  )
+
+  set(ENB_AGENT_LIB ENB_AGENT)
+  set(PROTOBUF_LIB "protobuf-c")
+
+endif()
+
+##########################
+
 # Utilities Library
 ################
 add_library(HASHTABLE
@@ -1442,8 +1482,6 @@ if(NAS_UE)
   include_directories(${NAS_SRC}UE/ESM/SAP)
 endif()
 
-
-
 # Make lfds as a own source code (even if it is a outside library)
 # For better intergration with compilation flags & structure of cmake
 ###################################################################
@@ -1627,15 +1665,17 @@ add_executable(lte-softmodem
 
 target_link_libraries (lte-softmodem -ldl
   -Wl,--start-group
-  RRC_LIB S1AP_LIB S1AP_ENB GTPV1U SECU_CN SECU_OSA UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB PHY LFDS L2 ${MSC_LIB} ${RAL_LIB} ${NAS_UE_LIB} ${ITTI_LIB} ${MIH_LIB} 
+  RRC_LIB S1AP_LIB S1AP_ENB GTPV1U SECU_CN SECU_OSA UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB PHY LFDS L2 ${MSC_LIB} ${RAL_LIB} ${NAS_UE_LIB} ${ITTI_LIB} ${MIH_LIB}
   -Wl,--end-group )
 
 
 target_link_libraries (lte-softmodem ${LIBXML2_LIBRARIES})
-target_link_libraries (lte-softmodem pthread m ${CONFIG_LIBRARIES} rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} sctp ${option_HW_lib} ${option_TP_lib} ${XFORMS_LIBRARIES} ) 
+target_link_libraries (lte-softmodem pthread m ${CONFIG_LIBRARIES} rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} sctp ${option_HW_lib} ${option_TP_lib} ${XFORMS_LIBRARIES})
 target_link_libraries (lte-softmodem ${LIBBOOST_LIBRARIES})
 target_link_libraries (lte-softmodem ${LIB_LMS_LIBRARIES})
 target_link_libraries (lte-softmodem ${T_LIB})
+target_link_libraries (lte-softmodem ${ENB_AGENT_LIB} ${PROTOBUF_LIB})
+
 
 # lte-softmodem-nos1 is both eNB and UE implementation
 ###################################################
@@ -1671,7 +1711,8 @@ target_link_libraries (lte-softmodem-nos1 ${LIBXML2_LIBRARIES})
 target_link_libraries (lte-softmodem-nos1 pthread m ${CONFIG_LIBRARIES} rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES}  ${option_HW_lib}  ${option_TP_lib} ${XFORMS_LIBRARIES} )
 target_link_libraries (lte-softmodem-nos1 ${LIBBOOST_LIBRARIES})
 target_link_libraries (lte-softmodem-nos1  ${LIB_LMS_LIBRARIES})
-target_link_libraries (lte-softmodem ${T_LIB})
+target_link_libraries (lte-softmodem-nos1 ${T_LIB})
+target_link_libraries (lte-softmodem-nos1 ${ENB_AGENT_LIB} ${PROTOBUF_LIB})
 
 # rrh
 ################################
@@ -1776,7 +1817,7 @@ target_link_libraries (oaisim pthread m ${CONFIG_LIBRARIES} rt crypt ${CRYPTO_LI
 #Force link with forms, regardless XFORMS option
 target_link_libraries (oaisim forms)
 target_link_libraries (oaisim ${T_LIB})
-
+target_link_libraries (oaisim ${ENB_AGENT_LIB} ${PROTOBUF_LIB})
 
 
 # A all in one network simulator
@@ -1815,6 +1856,7 @@ target_link_libraries (oaisim_nos1 pthread m ${CONFIG_LIBRARIES} rt crypt ${CRYP
 #Force link with forms, regardless XFORMS option
 target_link_libraries (oaisim_nos1 forms)
 target_link_libraries (oaisim_nos1 ${T_LIB})
+target_link_libraries (oaisim_nos1 ${ENB_AGENT_LIB} ${PROTOBUF_LIB})
 
 # Unitary tests for each piece of L1: example, mbmssim is MBMS L1 simulator
 #####################################
@@ -1830,6 +1872,7 @@ foreach(myExe dlsim ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim syn
     -Wl,--start-group SIMU UTIL SCHED_LIB PHY LFDS ${ITTI_LIB} -Wl,--end-group
     pthread m rt ${CONFIG_LIBRARIES} ${ATLAS_LIBRARIES} ${XFORMS_LIBRARIES} ${T_LIB}
     )
+  target_link_libraries (${myExe} ${ENB_AGENT_LIB} ${PROTOBUF_LIB})
 endforeach(myExe)
 
 add_executable(test_epc_generate_scenario
@@ -1843,8 +1886,9 @@ add_executable(test_epc_generate_scenario
   ${OPENAIR_BIN_DIR}/messages_xml.h
   )
 target_link_libraries (test_epc_generate_scenario
-  -Wl,--start-group RRC_LIB S1AP_LIB S1AP_ENB X2AP_LIB GTPV1U LIB_NAS_UE SECU_CN UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB PHY LFDS ${ITTI_LIB} ${MSC_LIB} L2 -Wl,--end-group pthread m rt crypt sctp ${LIBXML2_LIBRARIES} ${LIBXSLT_LIBRARIES} ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} ${CONFIG_LIBRARIES}  
+  -Wl,--start-group RRC_LIB S1AP_LIB S1AP_ENB X2AP_LIB GTPV1U LIB_NAS_UE SECU_CN UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB PHY LFDS ${ITTI_LIB} ${MSC_LIB} L2 -Wl,--end-group pthread m rt crypt sctp ${LIBXML2_LIBRARIES} ${LIBXSLT_LIBRARIES} ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} ${CONFIG_LIBRARIES}
   )
+target_link_libraries (test_epc_generate_scenario ${ENB_AGENT_LIB} ${PROTOBUF_LIB})
 
 add_executable(test_epc_play_scenario
   ${OPENAIR3_DIR}/TEST/EPC_TEST/play_scenario.c
@@ -1866,6 +1910,7 @@ target_include_directories(test_epc_play_scenario PUBLIC /usr/local/share/asn1c)
 target_link_libraries (test_epc_play_scenario
   -Wl,--start-group RRC_LIB S1AP_LIB X2AP_LIB GTPV1U LIB_NAS_UE SECU_CN UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB PHY LFDS ${ITTI_LIB} ${MSC_LIB} -Wl,--end-group pthread m rt crypt sctp ${LIBXML2_LIBRARIES} ${LIBXSLT_LIBRARIES} ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} ${CONFIG_LIBRARIES}  
   )
+target_link_libraries (test_epc_play_scenario ${ENB_AGENT_LIB} ${PROTOBUF_LIB})
 
 
 #unitary tests for Core NEtwork pieces
@@ -1885,7 +1930,7 @@ foreach(myExe s1ap
     ${OPENAIR3_DIR}/TEST/test_${myExe}.c
     )
   target_link_libraries (test_${myExe}
-    -Wl,--start-group SECU_CN UTIL LFDS -Wl,--end-group m rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} ${CONFIG_LIBRARIES} 
+    -Wl,--start-group SECU_CN UTIL LFDS -Wl,--end-group m rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} ${CONFIG_LIBRARIES}
     )
 endforeach(myExe)
 
@@ -1915,7 +1960,7 @@ endif (${T_TRACER})
 # Generated specific cases is not regular code
 ###############################################
 
-##################""
+#######################################
 # itti symbolic debug print require to generate a specific include file
 ########################################
 
