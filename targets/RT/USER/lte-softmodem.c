@@ -126,7 +126,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 #if defined (ENB_AGENT)
 # include "emage.h"
-#include "emoai.h"
+# include "emoai.h"
 #endif
 
 #ifdef XFORMS
