@@ -1,0 +1,69 @@
+// Copyright (c) 2016 
+//	Kewin Rausch <kewin.rausch@create-net.org>
+// 	Supreeth Herle <s.herle@create-net.org >
+//
+// This program is free software; you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 2 of the License, or (at your option)
+// any later version.
+//
+// This file carries the syntax of the messages exchanged between an Empower 
+// agent and an Empower controller.
+
+syntax = "proto2";
+
+import "hello.proto";
+import "statistics.proto";
+import "configs.proto";
+
+//
+// Type of recognized messages.
+//
+enum MsgType {
+	// Invalid message; not computed by default.  
+	INVALID = 0;
+	// Hello request message.
+	HELLO_REQ = 1;
+	// Hello reply message.
+	HELLO_REP = 2;
+	// Statistics request message.
+	STATS_REQ = 3;
+	// Statistics reply message.
+	STATS_REP = 4;
+	// Configuration request message.
+	CONF_REQ = 5;
+	// Configuration reply message.
+	CONF_REP = 6;
+};
+
+//
+// Common head to identify the operation.
+//
+message header {
+	// Type of 1st level message. 
+	optional MsgType type = 1;
+	// Version of 1st level message.
+	optional uint32 vers = 2;
+	// Base station identifier.
+	optional uint32 b_id = 3;
+	// Module identifier (Used in Virtualized RAN concepts and OAI).
+	optional uint32 m_id = 4;
+	// Sequence number.
+	optional uint32 seq = 5;
+	// Transaction identifier.
+	optional uint32 t_id = 6;
+}
+
+//
+// Master message sent by the agent system.
+//
+message emage_msg {
+	// Header for every message. 
+	optional header head = 1;
+	// Type of possible messages.
+	oneof message {
+		hello mHello = 2;
+		statistics mStats = 3;
+		configs mConfs = 4;
+	}
+}

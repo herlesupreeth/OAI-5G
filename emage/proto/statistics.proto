@@ -1,0 +1,598 @@
+// Copyright (c) 2016 Supreeth herle <s.herle@create-net.org>
+//
+// This program is free software; you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 2 of the License, or (at your option)
+// any later version.
+//
+// This file carries the definition of the statistics related messages
+// exchanged between an Empower agent and an Empower controller.
+
+syntax = "proto2"; 
+
+//
+// Types of statistics related messages requested by the controller.
+//
+enum stats_msg_type {
+	// Layer 2 statistics request.
+	L2_STATISTICS_REQUEST = 0;
+	// Layer 2 statistics reply.
+	L2_STATISTICS_REPLY = 1;
+	// RRC measurements request.
+	RRC_MEASUREMENTS_REQUEST = 2;
+	// RRC measurements reply.
+	RRC_MEASUREMENTS_REPLY = 3;
+}
+
+//
+// Flags for MAC Control Elements (CE).
+//
+enum mac_ce_type {
+	// Timing Advance.
+	MCET_TA = 1;
+	// Discontinuous reception.
+	MCET_DRX = 2;
+	// (Need to look up in spec).
+	MCET_CR = 4;
+	// (Need to look up in spec).
+	MCET_CA = 8;
+}
+
+//
+// Types of UL CQI reports.
+//
+enum ul_cqi_type {
+	// Sounding Reference Signal.
+	ULCT_SRS = 0;
+	// Physical Uplink Shared Channel.
+	ULCT_PUSCH = 1;
+	// Physical Uplink Control Channel 1.
+	ULCT_PUCCH_1 = 2;
+	// Physical Uplink Control Channel 2.
+	ULCT_PUCCH_2 = 3;
+	// Physical Random Access Channel.
+	ULCT_PRACH = 4;
+}
+
+//
+// Types of DL (Downlink) CSI reports. (To do: Need to document after going 
+// through 3GPP specification)
+//
+enum csi_type {
+	CSIT_P10 = 0;
+	CSIT_P11 = 1;
+	CSIT_P20 = 2;
+	CSIT_P21 = 3;
+	CSIT_A12 = 4;
+	CSIT_A22 = 5;
+	CSIT_A20 = 6;
+	CSIT_A30 = 7;
+	CSIT_A31 = 8;
+}
+
+//
+// Types of Layer 2 statistics requested by the controller.
+//
+enum l2_stats_type {
+	// Both cell and UE related statistics.
+	L2ST_COMPLETE = 0;
+	// Base station cell related statistics.
+	L2ST_CELL = 1;
+	// UE related statistics.
+	L2ST_UE = 2;
+}
+
+//
+// Report frequency for the requested statistics.
+//
+enum reporting_frequency {
+	// Report only once.
+	REPF_ONCE = 0;
+	// Report periodically.
+	REPF_PERIODICAL = 1;
+	// Report continuously one after another.
+	REPF_CONTINUOUS = 2;
+	// Turn-off periodical and/or continuous reporting.
+	REPF_OFF = 3;
+}
+
+//
+// Reporting flags for cell statistics.
+//
+enum cell_stats_type {
+	// Noise interference report of the cell.
+	CST_NOISE_INTERFERENCE = 1;
+}
+
+//
+// Reporting flags for UE-related statistics.
+//
+enum ue_stats_type {
+	// Buffer Status Report.
+	UEST_BSR = 1;
+	// Power Headroom report.
+	UEST_PRH = 2;
+	// RLC (Radio Link Control) Buffer Status report.
+	UEST_RLC_BS = 4;
+	// MAC (Media Access Control) Control Elements Buffer Status report.
+	UEST_MAC_CE_BS = 8;
+	// Downlink Channel Quality Indicator report.
+	UEST_DL_CQI = 16;
+	// Paging Buffer Status report.
+	UEST_PBS = 32;
+	// Uplink Channel Quality Indicator report.
+	UEST_UL_CQI = 64;
+	// To be extended with more types of stats.
+}
+
+//
+// Common statistics message to identify the type of statistics.
+//
+message statistics {
+	// Type of 2nd level message.
+	optional stats_msg_type type = 100;
+	// Types of statistics related messages.
+	oneof stats_msg {
+		// Request message for Layer 2 statistics.
+		l2_statistics_request l2_stats_req = 1;
+		// Reply message for Layer 2 statistics request.
+		l2_statistics_reply l2_stats_repl = 2;
+		// Request message for RRC measurements.
+		rrc_measurements_request rrc_meas_req = 3;
+		// Reply message with RRC measurements.
+		rrc_measurements_reply rrc_meas_repl = 4;
+
+	}
+}
+
+//
+// Message definition for RRC measurements reply.
+//
+message rrc_measurements_reply {
+	// Radio Network Temporary Identifier (RNTI) of UE.
+	optional uint32 rnti = 2;
+	// RRC measurements performed by UE.
+	optional rrc_measurements measurements = 3;
+}
+
+//
+// Message definition for RRC measurements.
+//
+message rrc_measurements {
+	// Measurement identifier.
+	optional int32 measId = 1;
+	// Primary Cell Reference Signal Received Power (RSRP).
+	optional int32 PCell_rsrp = 2;
+	// Primary Cell Reference Signal Received Quality (RSRQ).
+	optional int32 PCell_rsrq = 3;
+	// Neighboring cells measurements performed by UE.
+	optional neigh_cells_measurements neigh_meas = 4;
+}
+
+//
+// Message definition for neighboring cell measurements.
+//
+message neigh_cells_measurements {
+	// Neighboring EUTRA cells measurements.
+	repeated EUTRA_measurements EUTRA_meas = 1;
+	//repeated UTRA_measurements UTRA_meas = 2;
+	//repeated GERAN_measurements GERAN_meas = 3;
+	//repeated CDMA2000_measurements CDMA2000_meas = 4;
+	// For now only EUTRAN measurements are supported
+}
+
+//
+// Message definition for neighboring EUTRA cell measurements.
+//
+message EUTRA_measurements {
+	// Physical Cell identifier.
+	optional int32 phys_cell_id = 1;
+	// EUTRA Cell Global Identity (CGI) measurement.
+	optional EUTRA_cgi_measurements cgi_meas = 2;
+	// EUTRA nearby cell reference signal measurement.
+	optional EUTRA_ref_signal_meas meas_result = 3;
+}
+
+//
+// Message definition for neighboring EUTRA cell CGI
+// measurements.
+//
+message EUTRA_cgi_measurements {
+	// EUTRA Cell Global Identity (CGI).
+	optional cell_global_id_EUTRA cgi = 1;
+	// Tracking area code of the neighbor cell.
+	optional uint32 tracking_area_code = 2;
+	// Public land mobile network identifiers of neighbor cell.
+	repeated plmn_identity plmn_id = 3;
+}
+
+//
+// Message definition for Public land mobile network identifier.
+//
+message plmn_identity {
+	// Mobile Network Code (MNC).
+	repeated uint32 mnc = 1;
+	// Mobile Country Code (MCC).
+	repeated uint32 mcc = 2;
+}
+
+//
+// Message definition for EUTRA Cell Global Identity.
+//
+message cell_global_id_EUTRA {
+	// Public land mobile network identifier of neighbor cell.
+	optional plmn_identity plmn_id = 1;
+	// Cell identifier of neighbor cell.
+	optional uint32 cell_id = 2;
+}
+
+//
+// Message definition for neighboring EUTRA cell reference signal measurements.
+//
+message EUTRA_ref_signal_meas {
+	// Neighboring Cell Reference Signal Received Power (RSRP).
+	optional int32 rsrp = 1;
+	// Neighboring Cell Reference Signal Received Quality (RSRQ).
+	optional int32 rsrq = 2;
+	// some more extensions for release 9 (to be added later) 
+}
+
+//
+// Message definition for RRC measurements request.
+//
+message rrc_measurements_request {
+	// Radio Network Temporary Identifier (RNTI) of UE.
+	optional uint32 rnti = 2;
+	// Configuration of RRC measurements to be performed by UE.
+	optional rrc_measurements_request_config config = 3;
+}
+
+//
+// Message definition for configuration of RRC measurements request.
+//
+message rrc_measurements_request_config {
+	// The reporting interval parameter for Report Configurations 
+	// for periodical measurements.
+	optional uint32 report_interval = 1;
+	// Carrier frequency on which measurements should be carried out.
+	optional uint32 report_carrier_freq = 2;
+}
+
+//
+// Message definition for Layer 2 statistics reports.
+//
+message l2_statistics_reply {
+	// List of UE related statistics for all UEs requested in request.
+	repeated ue_statistics_report ue_report = 2;
+	// List of cell related statistics for all cells requested in request.
+	repeated cell_statistics_report cell_report = 3;
+}
+
+//
+// Message definition for cell related Layer 2 statistics report per CC.
+//
+message cell_statistics_report {
+	// Component Carrier (CC) id.
+	optional uint32 cc_id = 1;
+	// Types of cell related l2 statistics to include in final report.
+	// This field is a bitmask which holds the values in cell_stats_type.
+	optional uint32 report_flags = 2;
+	// Noise interference statistics in a particular component carrier.
+	optional noise_interference_report noise_interf = 3;
+}
+
+//
+// Message definition for UL noise and interference report faced by UE.
+//
+message noise_interference_report {
+	// Current frame and subframe number.
+	// System Frame Number (SFN) * Subframe number.
+	optional uint32 sfn_sf = 1;
+	// Received interference power in dbm
+	optional uint32 rip = 2;
+	// Thermal noise power in dbm
+	optional uint32 tnp = 3;
+}
+
+//
+// Message definition for UE related Layer 2 statistics report per UE.
+//
+message ue_statistics_report {
+	// Radio Network Temporary Identifier (RNTI) of UE.
+	optional uint32 rnti = 1;
+	// Types of UE related l2 statistics to include in final report.
+	// This field is a bitmask which holds the values in ue_stats_type.
+	optional uint32 report_flags = 2;
+	// Buffer Status Report for each logical channel of the UE.
+	repeated uint32 bsr = 3;
+	// Power Headroom report.
+	optional uint32 phr = 4;
+	// RLC (Radio Link Control) Buffer Status reports
+	// for each logical channel of the UE.
+	repeated rlc_bsr_report rlc_bsr = 5;
+	// MAC (Media Access Control) Control Elements Buffer Status report.
+	// Bitmap of "mac_ce_type"
+	optional uint32 pending_mac_ces = 6;
+	// Downlink Channel Quality Indicator report.
+	optional dl_cqi_report dl_cqi = 7;
+	// Paging Buffer Status report.
+	optional paging_buffer_report pbr = 8;
+	// Uplink Channel Quality Indicator report.
+	optional ul_cqi_report ul_cqi = 9;
+}
+
+//
+// Message definition for RLC (Radio Link Control) buffer status for a specific 
+// logical channel of a UE.
+//  
+message rlc_bsr_report {
+	// Logical channel id.
+	optional uint32 lc_id = 1;
+	// Transmission queue size in bytes.
+	optional uint32 tx_queue_size = 2;
+	// Transmission queue head of line delay in ms.
+	optional uint32 tx_queue_hol_delay = 3;
+	// Retransmission queue size in bytes.
+	optional uint32 retransmission_queue_size = 4;
+	// Retransmission queue head of line delay in ms.
+	optional uint32 retransmission_queue_hol_delay = 5;
+	// Current size of the pending message in bytes.
+	optional uint32 status_pdu_size = 6;
+}
+
+
+//
+// Message definition for full DL CQI report for all CC of a UE.
+//
+message dl_cqi_report {
+	// Current frame and subframe number.
+	// System Frame Number (SFN) * Subframe number.
+	optional uint32 sfn_sn = 1;
+	// Channel State Information (CSI).
+	// CSI reports of a UE for all serving cell indexes.
+	repeated dl_csi_report dl_csi = 2;
+}
+
+//
+// Message definition for Channel State Information (CSI) report of a UE 
+// for a specific serving cell index.
+//
+message dl_csi_report {
+	// Serving cell index.
+	optional uint32 serv_cell_index = 1;
+	// Rank Indicator.
+	optional uint32 ri = 2;
+	// Types of DL (Downlink) CSI report.
+	optional csi_type type = 3;
+	// (To do: Need to document after going through 3GPP specification)
+	oneof report {
+	      csi_p10 p10csi = 4;
+	      csi_p11 p11csi = 5;
+	      csi_p20 p20csi = 6;
+	      csi_p21 p21csi = 7;
+	      csi_a12 a12csi = 8;
+	      csi_a22 a22csi = 9;
+	      csi_a20 a20csi = 10;
+	      csi_a30 a30csi = 11;
+	      csi_a31 a31csi = 12;
+	}
+}
+
+//
+// Message definition for CSI type P10.
+//
+message csi_p10 {
+	// Wideband Channel Qquality Indicator.
+	optional uint32 wb_cqi = 1;
+}
+
+//
+// Message definition for CSI type P11.
+//
+message csi_p11 {
+	// Wideband Channel Quality Indicator.
+	repeated uint32 wb_cqi = 1;
+	// Wideband Precoding Matrix Indicator.
+	optional uint32 wb_pmi = 2;
+}
+
+//
+// Message definition for CSI type P20.
+//
+message csi_p20 {
+	// Wideband Channel Quality Indicator.
+	optional uint32 wb_cqi = 1;
+	// Subband Channel Quality Indicator.
+	optional uint32 sb_cqi = 2;
+	// Bandwidth part index.
+	optional uint32 bandwidth_part_index = 3;
+	// Subband index.
+	optional uint32 sb_index = 4;
+}
+
+//
+// Message definition for CSI type P21.
+//
+message csi_p21 {
+	// Wideband Channel Quality Indicator.
+	repeated uint32 wb_cqi = 1;
+	// Wideband Precoding Matrix Indicator.
+	optional uint32 wb_pmi = 2;
+	// Subband Channel Quality Indicator.
+	repeated uint32 sb_cqi = 3;
+	// Bandwidth part index.
+	optional uint32 badwidth_part_index = 4;
+	// Subband index.
+	optional uint32 sb_index = 5;
+}
+
+//
+// Message definition for CSI type A12.
+//
+message csi_a12 {
+	// Wideband Channel Quality Indicator.
+	repeated uint32 wb_cqi = 1;
+	// Subband Precoding Matrix Indicator.
+	repeated uint32 sb_pmi = 2;
+}
+
+//
+// Message definition for CSI type A22.
+//
+message csi_a22 {
+	// Wideband Channel Quality Indicator.
+	repeated uint32 wb_cqi = 1;
+	// Subband Channel Quality Indicator.
+	repeated uint32 sb_cqi = 2;
+	// Wideband Precoding Matrix Indicator.
+	optional uint32 wb_pmi = 3;
+	// Subband Precoding Matrix Indicator.
+	optional uint32 sb_pmi = 4;
+	// List of Subbands.
+	repeated uint32 sb_list = 5;
+}
+
+//
+// Message definition for CSI type A20.
+//
+message csi_a20 {
+	// Wideband Channel Quality Indicator.
+	optional uint32 wb_cqi = 1;
+	// Subband Channel Quality Indicator.
+	optional uint32 sb_cqi = 2;
+	// List of Subbands.
+	repeated uint32 sb_list = 3;
+}
+
+//
+// Message definition for CSI type A30.
+//
+message csi_a30 {
+	// Wideband Channel Quality Indicator.
+	optional uint32 wb_cqi = 1;
+	// Subband Channel Quality Indicator.
+	repeated uint32 sb_cqi = 2;
+}
+
+//
+// Message definition for CSI type A31.
+//
+message csi_a31 {
+	// Wideband Channel Quality Indicator.
+	repeated uint32 wb_cqi = 1;
+	// CQI for the M-preffered subband.
+	repeated msb_cqi sb_cqi = 2;
+	// Wideband Precoding Matrix Indicator.
+	optional uint32 wb_pmi = 3;
+}
+
+//
+// Message definition for CQI for the M-preffered subband.
+//
+message msb_cqi {
+	// Subband Channel Quality Indicator.
+	repeated uint32 sb_cqi = 1;
+}
+
+//
+// Message definition for Paging message info.
+//
+message paging_info {
+	// Paging index.
+	optional uint32 paging_index = 1;
+	// Paging message size.
+	optional uint32 paging_message_size = 2;
+	// Paging subframe.
+	optional uint32 paging_subframe = 3;
+	// Component Carrier (CC) index for the pending paging message.
+	optional uint32 cc_index = 4;
+}
+
+//
+// Message definition for the paging buffer status report.
+//
+message paging_buffer_report {
+	// Pending paging messages information.
+	repeated paging_info pg_info = 1;
+}
+
+//
+// Message definition for UL CQI report for a specific UE 
+// for a given report type.
+//
+message ul_cqi {
+	// UL CQI report type.
+	optional ul_cqi_type type = 1;
+	// Signal Interference Noise Ratio.
+	repeated uint32 sinr = 2;
+	// Serving Cell Index.
+	optional uint32 serv_cell_index = 3;
+}
+
+//
+// Message definition for UL (Uplink) CQI report for a specific UE.
+//
+message ul_cqi_report {
+	// Current frame and subframe number.
+	// System Frame Number (SFN) * Subframe number.
+	optional uint32 sfn_sn = 1;
+	// Uplink CQI measurements for requested UL CQI types.
+	repeated ul_cqi cqi_meas = 2;
+}
+
+//
+// Message definition for request of Layer 2 statistics reports.
+//
+message l2_statistics_request {
+	// Type of 3rd level message.
+	optional l2_stats_type type = 2;
+	// Periodicity of statistics reporting.
+	optional reporting_frequency report_freq = 3;
+	// Periodicity in terms of number of subframes (1 subframe = 1 ms).
+	optional uint32 subframe = 4;
+	oneof stats_req {
+		// Base station cell related statistics.
+		cell_statistics_request cell_stats_req = 5;
+		// UE related statistics.
+		ue_statistics_request ue_stats_req = 6;
+		// Contains both cell and UE related statistics.
+		complete_statistics_request comp_stats_req = 7;
+	}
+}
+
+//
+// Message definition for complete (Cell + UE) Layer 2 statistics request.
+//
+message complete_statistics_request {
+	// Types of cell related l2 statistics to include in final report.
+	// This field is a bitmask which holds the values in cell_stats_type.
+	optional uint32 cell_report_flags = 1;
+	// Types of UE related l2 statistics to include in final report.
+	// This field is a bitmask which holds the values in ue_stats_type.
+	optional uint32 ue_report_flags = 2;
+}
+
+//
+// Message definition for cell related Layer 2 statistics request.
+//
+message cell_statistics_request {
+	// List of CC (Component Carrier) ids for which statistics 
+	// needs to be reported.
+	repeated uint32 cc_id = 1;
+	// Types of cell related l2 statistics to include in final report.
+	// This field is a bitmask which holds the values in cell_stats_type.
+	optional uint32 report_flags = 2;
+}
+
+//
+// Message definition for UE related Layer 2 statistics request.
+//
+message ue_statistics_request {
+	// List of RNTIs of UEs for which statistics needs to be reported.
+	// Radio Network Temporary Identifier (RNTI).
+	repeated uint32 rnti = 1;
+	// Types of UE related l2 statistics to include in final report.
+	// This field is a bitmask which holds the values in ue_stats_type.
+	optional uint32 report_flags = 2;
+}
+

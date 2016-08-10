@@ -1,0 +1,20 @@
+// Copyright (c) 2016 
+//	Kewin Rausch <kewin.rausch@create-net.org>
+// 	Supreeth Herle <s.herle@create-net.org >
+//
+// This program is free software; you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 2 of the License, or (at your option)
+// any later version.
+//
+// This file carries the common header definition for 1st level messages.
+
+syntax = "proto2"; 
+
+//
+// Hello message carries : periodicity of hello message.
+//
+message hello  {
+	// Hello message periodicity.
+	optional uint32 period = 1;
+}
