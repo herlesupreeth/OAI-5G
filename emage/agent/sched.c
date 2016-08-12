@@ -1,9 +1,16 @@
 /* Copyright (c) 2016 Kewin Rausch <kewin.rausch@create-net.org>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option)
- * any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 /*
@@ -19,6 +26,7 @@
 #include "agent.h"
 #include "sched.h"
 
+#include "msg.h"
 #include "emlist.h"
 #include "net.h"
 
@@ -90,6 +98,7 @@ int sched_perform_enbr(struct agent * a, struct sched_job * job) {
 
 		if (net_send(&a->net, buf, blen) < 0) {
 			EMDBG("Sending eNB configuration reply failed!");
+
 			emage_msg__free_unpacked(rpl, 0);
 			free(buf);
 			return JOB_NET_ERROR;
@@ -210,6 +219,8 @@ int sched_release_job(struct sched_job * job) {
 	}
 
 	free(job);
+
+	return 0;
 }
 
 /******************************************************************************
@@ -224,6 +235,8 @@ int sched_add_job(struct sched_job * job, struct sched_context * sched) {
 	list_add(&job->next, &sched->jobs);
 	pthread_spin_unlock(&sched->lock);
 /****** UNLOCK ****************************************************************/
+
+	return 0;
 }
 
 int sched_perform_job(
@@ -452,7 +465,7 @@ out:
 
 int sched_start(struct sched_context * sched) {
 	/* 300 ms interval by default. */
-	sched->interval = 300;
+	sched->interval = 100;
 
 	INIT_LIST_HEAD(&sched->jobs);
 	INIT_LIST_HEAD(&sched->todo);

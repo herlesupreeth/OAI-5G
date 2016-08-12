@@ -1,9 +1,16 @@
 /* Copyright (c) 2016 Kewin Rausch <kewin.rausch@create-net.org>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option)
- * any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 /*
@@ -28,6 +35,7 @@
 #include "agent.h"
 #include "msg.h"
 #include "net.h"
+#include "sched.h"
 
 #include "emlist.h"
 #include "sched.h"
@@ -398,16 +406,19 @@ void * net_loop(void * args) {
 			if (bread != mlen) {
 				EMLOG("Malformed message received, "
 					"msg=%d, recv=%d", mlen, bread);
-				/* 
-				 * Ok, this is serious, since we can loose the
+
+				/* Ok, this is serious, since we can loose the
 				 * alignment of the 4 firsts bytes which 
 				 * contains the message size.
+				 *
+				 * Cloasing the socket here cause the Hello to
+				 * fail on sending, and this triggers the right
+				 * NOT_CONNECTED condition(cleanup of the
+				 * scheduler).
 				 */
-
-				/* Reset the connection. */
 				close(net->sockfd);
-				net->sockfd = 0;
-				net->status = EM_STATUS_NOT_CONNECTED;
+
+				goto sleep;
 			}
 
 			msg = emage_msg__unpack(0, mlen, buf);
@@ -419,6 +430,7 @@ void * net_loop(void * args) {
 			}
 		}
 
+sleep:
 		/* Relax the CPU. */
 		nanosleep(&wt, &td);
 	}
