@@ -1,9 +1,16 @@
 /* Copyright (c) 2016 Kewin Rausch <kewin.rausch@create-net.org>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option)
- * any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 /* Userspace Agent controller simulator.
@@ -94,14 +101,14 @@ void handle_ctrlc(int signal) {
  * simulation job depending on the command sent.                              *
  ******************************************************************************/
 
-/* Prepares a L@ statistic request message which can be personalized. This is
+/* Prepares a L2 statistic request message which can be personalized. This is
  * not a complete and valid message, and it's here only for debugging purposes.
  *
  * Types: 0=all, 1=cell or 2=ue.
  * Modes: 0=once, 1=periodical or 3=off.
  */
 int parse_l2_stats_request(
-	char ** buf, int * size, int type, int mode, int interval) {
+	char ** buf, int * size, int tid, int type, int mode, int interval) {
 
 	char * rb = 0;
 	int ms = 0;
@@ -116,8 +123,8 @@ int parse_l2_stats_request(
 	 * Filling the header.
 	 */
 
-	/* Length provided later. */
-	hdr.has_len = 1;
+	hdr.has_t_id = 1;
+	hdr.t_id = tid;
 
 	hdr.has_type = 1;
 	hdr.type = MSG_TYPE__STATS_REQ;
@@ -134,9 +141,6 @@ int parse_l2_stats_request(
 	/*
 	 * Filling L2 stat request.
 	 */
-
-	l2req.has_t_id = 1;
-	l2req.t_id = rand();
 
 	l2req.has_type = 1;
 	l2req.type = type;
@@ -270,7 +274,8 @@ void * serve_connection(void * args) {
 		}
 		/* Connection closed. */
 		else if (bread == 0) {
-			printf("Shutting down connection...\n");
+			printf("Shutting down connection with %s...\n",
+				hostaddr);
 			close(c->fd);
 			break;
 		}
@@ -384,6 +389,9 @@ void * input_loop(void * args) {
 	int mlen = 0;
 
 	char * token = 0;
+
+	int tid = 0;
+
 	int opt1 = 0;
 	int opt2 = 0;
 	int opt3 = 0;
@@ -401,17 +409,31 @@ void * input_loop(void * args) {
 		line[llen - 1] = 0;
 		token = strtok(line, " ");
 
+		if(strcmp(token, "help") == 0) {
+			printf(
+"Supported commands:\n"
+"    l2_stats_req\n");
+
+			continue;
+		}
+
 		/* We required a L2 stats request. */
 		if(strcmp(token, "l2_stats_req") == 0) {
 			token = strtok(0, " ");
 
 			if(!token) {
 				printf(
-"Syntax: l2_stats_req <type> <mode> <interval>\n");
+"Syntax: l2_stats_req <tid> <type> <mode> <interval>\n"
+"Tid: Id of the command"
+"Types: 0=all, 1=cell, 2=ue\n"
+"Modes: 0=once, 1=periodic, 3=off\n");
 
 				continue;
 			}
 
+			tid=atoi(token);
+
+			token = strtok(0, " ");
 			opt1=atoi(token);
 
 			token = strtok(0, " ");
@@ -420,8 +442,8 @@ void * input_loop(void * args) {
 			token = strtok(0, " ");
 			opt3=atoi(token);
 
-
-			parse_l2_stats_request(&buf, &mlen, opt1, opt2, opt3);
+			parse_l2_stats_request(
+				&buf, &mlen, tid, opt1, opt2, opt3);
 
 			if(uctrl_agent) {
 				printf("Sending L2 stats request...\n");
@@ -443,7 +465,7 @@ void help() {
 "Emage Controller Simulator\n"
 "Copyright (c) 2016 Kewin Rausch <kewin.rausch@create-net.org>\n"
 "\n"
-"Usage: mgrsim <port>\n"
+"Usage: uctrl <port>\n"
 "\n");
 }
 
