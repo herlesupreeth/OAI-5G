@@ -630,7 +630,7 @@ add_boolean_option(MESSAGE_CHART_GENERATOR_RLC_MAC False "trace RLC-MAC exchange
 add_boolean_option(MESSAGE_CHART_GENERATOR_PHY     False "trace some PHY exchanges in sequence diagrams")
 
 add_boolean_option(ENB_AGENT                   True         "enable eNB agent to inteface with a SDN contrller")
-
+add_boolean_option(EMAGE_AGENT                   True         "enable EMAge agent to inteface with a contrller")
 ########################
 # Include order
 ##########################
@@ -845,9 +845,9 @@ include_directories("${OPENAIR_DIR}")
 
 # CNET EMAGE Library
 #####################
-Message("ENB_AGENT flag  is ${ENB_AGENT}")
+Message("EMAGE_AGENT flag  is ${EMAGE_AGENT}")
 
-if (ENB_AGENT)
+if (${EMAGE_AGENT})
 
   set(CNET_EMAGE_DIR ${OPENAIR_DIR}/emage)
   set(CNET_EMAGE_INC_DIR ${CNET_EMAGE_DIR}/include)
@@ -890,7 +890,7 @@ if (ENB_AGENT)
   set(AGENT_WRAP_LIB WRAP_LIB)
   set(PROTOBUF_LIB "protobuf-c")
 
-endif()
+endif(${EMAGE_AGENT})
 
 ##########################
 
@@ -1681,7 +1681,9 @@ target_link_libraries (lte-softmodem pthread m ${CONFIG_LIBRARIES} rt crypt ${CR
 target_link_libraries (lte-softmodem ${LIBBOOST_LIBRARIES})
 target_link_libraries (lte-softmodem ${LIB_LMS_LIBRARIES})
 target_link_libraries (lte-softmodem ${T_LIB})
-target_link_libraries (lte-softmodem ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+if (${EMAGE_AGENT})
+  target_link_libraries (lte-softmodem ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+endif (${EMAGE_AGENT})
 
 
 # lte-softmodem-nos1 is both eNB and UE implementation
@@ -1719,7 +1721,9 @@ target_link_libraries (lte-softmodem-nos1 pthread m ${CONFIG_LIBRARIES} rt crypt
 target_link_libraries (lte-softmodem-nos1 ${LIBBOOST_LIBRARIES})
 target_link_libraries (lte-softmodem-nos1  ${LIB_LMS_LIBRARIES})
 target_link_libraries (lte-softmodem-nos1 ${T_LIB})
-target_link_libraries (lte-softmodem-nos1 ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+if (${EMAGE_AGENT})
+  target_link_libraries (lte-softmodem-nos1 ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+endif (${EMAGE_AGENT})
 
 
 # rrh
@@ -1825,7 +1829,9 @@ target_link_libraries (oaisim pthread m ${CONFIG_LIBRARIES} rt crypt ${CRYPTO_LI
 #Force link with forms, regardless XFORMS option
 target_link_libraries (oaisim forms)
 target_link_libraries (oaisim ${T_LIB})
-target_link_libraries (oaisim ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+if (${EMAGE_AGENT})
+  target_link_libraries (oaisim ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+endif (${EMAGE_AGENT})
 
 
 # A all in one network simulator
@@ -1864,7 +1870,10 @@ target_link_libraries (oaisim_nos1 pthread m ${CONFIG_LIBRARIES} rt crypt ${CRYP
 #Force link with forms, regardless XFORMS option
 target_link_libraries (oaisim_nos1 forms)
 target_link_libraries (oaisim_nos1 ${T_LIB})
-target_link_libraries (oaisim_nos1 ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+if (${EMAGE_AGENT})
+  target_link_libraries (oaisim_nos1 ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+endif (${EMAGE_AGENT})
+
 
 
 # Unitary tests for each piece of L1: example, mbmssim is MBMS L1 simulator
@@ -1881,7 +1890,9 @@ foreach(myExe dlsim ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim syn
     -Wl,--start-group SIMU UTIL SCHED_LIB PHY LFDS ${ITTI_LIB} -Wl,--end-group
     pthread m rt ${CONFIG_LIBRARIES} ${ATLAS_LIBRARIES} ${XFORMS_LIBRARIES} ${T_LIB}
     )
-  target_link_libraries (${myExe} ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+  if (${EMAGE_AGENT})
+    target_link_libraries (${myExe} ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+  endif (${EMAGE_AGENT})
 endforeach(myExe)
 
 add_executable(test_epc_generate_scenario
@@ -1897,7 +1908,9 @@ add_executable(test_epc_generate_scenario
 target_link_libraries (test_epc_generate_scenario
   -Wl,--start-group RRC_LIB S1AP_LIB S1AP_ENB X2AP_LIB GTPV1U LIB_NAS_UE SECU_CN UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB PHY LFDS ${ITTI_LIB} ${MSC_LIB} L2 -Wl,--end-group pthread m rt crypt sctp ${LIBXML2_LIBRARIES} ${LIBXSLT_LIBRARIES} ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} ${CONFIG_LIBRARIES}
   )
-target_link_libraries (test_epc_generate_scenario ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+if (${EMAGE_AGENT})
+  target_link_libraries (test_epc_generate_scenario ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+endif (${EMAGE_AGENT})
 
 add_executable(test_epc_play_scenario
   ${OPENAIR3_DIR}/TEST/EPC_TEST/play_scenario.c
@@ -1919,7 +1932,9 @@ target_include_directories(test_epc_play_scenario PUBLIC /usr/local/share/asn1c)
 target_link_libraries (test_epc_play_scenario
   -Wl,--start-group RRC_LIB S1AP_LIB X2AP_LIB GTPV1U LIB_NAS_UE SECU_CN UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB PHY LFDS ${ITTI_LIB} ${MSC_LIB} -Wl,--end-group pthread m rt crypt sctp ${LIBXML2_LIBRARIES} ${LIBXSLT_LIBRARIES} ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} ${CONFIG_LIBRARIES}  
   )
-target_link_libraries (test_epc_play_scenario ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+if (${EMAGE_AGENT})
+  target_link_libraries (test_epc_play_scenario ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
+endif (${EMAGE_AGENT})
 
 
 #unitary tests for Core NEtwork pieces
