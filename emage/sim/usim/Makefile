@@ -1,33 +1,36 @@
 # Copyright (c) 2016 Kewin Rausch <kewin.rausch@create-net.org>
 #
-# This program is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Makefile to compile the Empower Agent protocol buffers.
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Makefile to compile the Empower Userspace Agent simulator.
 #
 
 CC=gcc
 
-ROOT=/home/sup/openairinterface5g/emage
+ROOT=../..
 
 TECHSP=$(ROOT)/tech
 AGENTP=$(ROOT)/agent
 PROTOP=$(ROOT)/proto
 
-LIBS=-L$(AGENTP) -L$(PROTOP) -lpthread -lprotobuf-c -lemproto
+LIBS=-L$(AGENTP) -L$(PROTOP) -lemagent -lemproto -lpthread -lprotobuf-c
 INCLUDES=-I$(ROOT)/include -I$(TECHSP)/usim/ -I$(PROTOP)/pb
 
 all:
 	$(CC) $(INCLUDES) -o usim					\
-		$(AGENTP)/core.c					\
-		$(AGENTP)/sched.c					\
-		$(AGENTP)/net.c						\
-		$(AGENTP)/msg.c						\
 		usim.c							\
 		$(TECHSP)/usim/em_usim.c				\
-		$(LIBS) 
+		$(LIBS)
 		
 		
 clean:
