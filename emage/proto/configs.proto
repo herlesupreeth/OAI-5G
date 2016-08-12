@@ -172,7 +172,7 @@ enum ue_state {
 	UES_RRC_INACTIVE = 0;
 	// UE in idle state.
 	UES_RRC_IDLE = 1;
-	// UE received Signalling Info state.
+	// UE received System Info state.
 	UES_RRC_SI_RECEIVED = 2;
 	// RRC Connected state.
 	UES_RRC_CONNECTED = 3;
@@ -231,9 +231,9 @@ message ue_config_request {
 }
 
 //
-// Message definition for configuration of signalling information (SI) messages.
+// Message definition for configuration of System Information (SI) messages.
 //
-message sg_info_msg {
+message si_info_msg {
 	// Periodicity of SI message in radio frames.
 	optional uint32 periodicity = 1;
 	// The length of the SI message in bytes.
@@ -241,21 +241,21 @@ message sg_info_msg {
 }
 
 //
-// Message definition for configuration of signalling information.
+// Message definition for configuration of System information.
 //
-message sg_info_config {
+message si_info_config {
 	// System Frame number.
 	optional uint32 sfn = 1;
-	// Length of Signalling Information Block 1 in bytes.
+	// Length of System Information Block 1 in bytes.
 	optional uint32 sib1_len = 2;
 	// Scheduling window for all SIs in subframes.
 	optional uint32 si_window_len = 3;
 	// List of SI messages to be sent.
-	// The index of the lilst identifies the type of an SI message.
+	// The index of the list identifies the type of an SI message.
 	// 0 - SIB1
 	// 1..31 - SIx
 	// 32..63 - PCCH
-	repeated sg_info_msg si_message = 4;
+	repeated si_info_msg si_message = 4;
 
 }
 
@@ -284,8 +284,8 @@ message cell_phy_config {
 	// Number of OFDM symbols possible to use for PDCCH in a subframe.
 	// Refer TS 36.211, section 6.9.
 	optional uint32 init_nr_PDCCH_OFDM_sym = 8;
-	// Signalling Information (SI) configuration.
-	optional sg_info_config si_conf = 9;
+	// System Information (SI) configuration.
+	optional si_info_config si_conf = 9;
 	// Downlink transmission bandwidth in RBs.
 	optional uint32 dl_bw = 10;
 	// Uplink transmission bandwidth in RBs.

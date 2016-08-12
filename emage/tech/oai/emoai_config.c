@@ -601,12 +601,12 @@ int emoai_get_cell_phy_conf (CellPhyConfig ** phy_conf,
 	// conf->init_nr_pdcch_ofdm_sym = emoai_get_num_pdcch_symb(m_id, cc_id);
 	conf->init_nr_pdcch_ofdm_sym = 1;
 	conf->has_init_nr_pdcch_ofdm_sym = 1;
-	/* Fill the configuration used for Signalling Information messages. */
-	SgInfoConfig *si_config;
-	si_config = malloc(sizeof(SgInfoConfig));
+	/* Fill the configuration used for System Information messages. */
+	SiInfoConfig *si_config;
+	si_config = malloc(sizeof(SiInfoConfig));
 	if(si_config == NULL)
 		goto error;
-	sg_info_config__init(si_config);
+	si_info_config__init(si_config);
 	/* Set the frame number to apply the SI configuration. */
 	si_config->sfn = 1;
 	si_config->has_sfn = 1;
@@ -618,15 +618,15 @@ int emoai_get_cell_phy_conf (CellPhyConfig ** phy_conf,
 	si_config->has_si_window_len = 1;
 	/* Set the number of SI messages. */
 	si_config->n_si_message = 1;
-	SgInfoMsg **si_msg;
-	si_msg = malloc(sizeof(SgInfoMsg *) * si_config->n_si_message);
+	SiInfoMsg **si_msg;
+	si_msg = malloc(sizeof(SiInfoMsg *) * si_config->n_si_message);
 	if(si_msg == NULL)
 		goto error;
 	for (j = 0; j < si_config->n_si_message; j++) {
-		si_msg[j] = (SgInfoMsg *) malloc(sizeof(SgInfoMsg));
+		si_msg[j] = (SiInfoMsg *) malloc(sizeof(SiInfoMsg));
 		if(si_msg[j] == NULL)
 			goto error;
-		sg_info_msg__init(si_msg[j]);
+		si_info_msg__init(si_msg[j]);
 		/* Set the periodicity of SI msg in radio frames. */
 		si_msg[j]->periodicity = 1;
 		si_msg[j]->has_periodicity = 1;
