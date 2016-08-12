@@ -1,0 +1,41 @@
+
+	EMAge simulators
+	
+EMAge provides also some really base simulators that can be used as a learning
+point on how to implement your own technology wrapper for the LTE stack in use.
+Under the 'sim' folder you can find the usim (userspace simulator) and the 
+uctrl(userspace controller) that will simulate the agent-controller standard
+behavior.
+
+
+USIM
+
+Since EMAge comes in a library implementation, it cannot stand alone as it is, 
+and must be embedded in another application. uSim provides an example of how an
+application must embed the agent in order to make it work. The necessary code 
+that must be integrated is kept minimal in order to have the less impacts as 
+possible with existing architectures.
+
+Under the 'tech' forlder you can find the uSim technology wrapper, which is the
+implementation of the agent offered callback in a very dummy way. They usually
+do nothing and just print on the console a feedback to inform that the message
+has been successfully computed.
+
+
+UCTRL
+
+The EMAge controller is a more complex application which has to 'emulate' the
+controller in it's communication part with the agent. The uctrl is really dummy,
+and has been introduced for debugging purposes.
+
+The controller is basically a CLI application which need a port in order to be 
+run. When it successfully start, it just remain silents to agents to connect 
+with it. The waiting states allow you to decide what to do, like for example
+sending some commands to the connected agents.
+
+NOTE: More than one agent can connect with he controller, but you will be able 
+to send commands just to the last one which connected. This is a known 
+limitation that will be resolved in the future releases.
+
+Cheers,
+Kewin R.

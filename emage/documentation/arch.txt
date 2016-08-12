@@ -1,0 +1,79 @@
+
+	EmPOWER Agent architecture
+	
+This is the architecture of the core component of he Agent project. EMAge allow
+you to run different instances of agent which you can distinguish by using the
+'base station id'. Each instance needs a set of operations (which are the 
+technology wrapper) and an unique id in order to work. The core component will 
+make sure that you are not trying to start two agent instances for the same
+base station id.
+
+              EMAge instance (one or more)
+             +----------------------+
+             | +----+ +-----------+ |+
+             | | Id | |    Ops    | ||
+             | +----+ +-----------+ ||
+             +----------------------+|
+              +----------------------+
+
+Each instance abstract over a set of operations that will interface with the LTE
+technology used. Such wrapper performs any technology-oriented operation without
+having to mess with the Agent internal. The Agent itself will provides the 
+necessary callbacks which will be triggered when a certain event happens in the
+system (like to respond to the controller feedback).
+
+              EMAge instance
+             +----------------------+
+             | +----+               |
+             | | Id |               |
+             | +----+               |    Tech. wrapper
+             |        +-----------+ |   +----------------+
+ Agent -----------------> Stats -----------> Callback --------> Interaction 
+ event       |        | callback  | |   | implementation |      with the stack
+             |        |     .     | |   |                |
+             |        |     .     | |   |                |
+             |        |     .     | |   |                |
+             |        +-----------+ |   +----------------+
+             +----------------------+
+
+Each instance has a separate context which is completely independant from each 
+other. Once you start an agent for a base station (you can have more than one
+agent per physical machine), a ballet between threads which belongs to that 
+agent instance begins. Two contextes are maintained per agent instance, which 
+are the Network and Scheduling contextes:
+
+    - The Network context is in charge of receiving and sending traffic with 
+      a controller. It also manages the connection state machine and reset 
+      functionalities (in case the connection is lost and must be 
+      estabished again). When a new command is received by the controller, it is
+      then passed to the agent Scheduling context.
+
+    - The Scheduling context is in charge of executing the actual jobs to do. It
+      also provide capabilities to run a job after a certain amount of time, or
+      to repeat a job if it's necessary (if you schedule a periodic update, for 
+      example). Always using the command from the controller you can also remove
+      jobs from the scheduled ones.
+
+
+         EMAge instance
+        +--------------------------------------------------------------+
+        |                                                              |
+        |     EMAge net. context            Emage sched. context       |
+        |    +----------------------+      +----------------------+    |
+        |    |                      |      |                      |    |
+        |    |   Recv. command ----------------> Sched job.       |    |
+        |    |                      |      |          |           |    |
+        |    |                      |      |          |           |    |
+        |    |                      |      |          v           |    |
+        |    |   Send feedback <---------------- Perform job      |    |
+        |    |                      |      |                      |    |
+        |    +----------------------+      +----------------------+    |
+        |                                                              |
+        +--------------------------------------------------------------+
+
+The contextes are independend from each other, so netowrking operations are 
+never interrupted by running jobs.      
+
+
+Cheers,
+Kewin R.
