@@ -630,7 +630,7 @@ add_boolean_option(MESSAGE_CHART_GENERATOR_RLC_MAC False "trace RLC-MAC exchange
 add_boolean_option(MESSAGE_CHART_GENERATOR_PHY     False "trace some PHY exchanges in sequence diagrams")
 
 add_boolean_option(ENB_AGENT                   True         "enable eNB agent to inteface with a SDN contrller")
-add_boolean_option(EMAGE_AGENT                 True        "enable EMAge agent to inteface with a controller")
+add_boolean_option(EMAGE_AGENT                 True         "enable EMAge agent to inteface with a controller")
 ########################
 # Include order
 ##########################

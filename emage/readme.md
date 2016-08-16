@@ -6,7 +6,7 @@ The EmPOWER Agent (EMAge for friends) is an integrable piece of software which p
 This software has been developed and tested for Linux, but it's minimal pre-requisites and the clean arcitecture allows to port it on different OS.
 
 ### Pre-requisites
-In order to successfully buil EMAge you need:
+In order to successfully build EMAge you need:
 * Linux standard build suite (GCC, LD, AR, etc...).
 * Pthread library, necessary to handle multithreading.
 * Protobuf-c, Google protocol buffer implementation for C.
@@ -19,7 +19,7 @@ In order to use EMAge the necessary steps to do are:
 * Include both the libraries when you are embedding the agent in your project (see Documentation for more information about this).
 
 ### Run the agent
-Thake in account that in order to run the agent you must prepare a configuration file which has to be named `agent.conf` and placed under the `/etc/empower` directory. The syntax of such configuration file is, for the moment, outrageously simple, and just contains the necessary information to reach the controller. Copying the empower folder which is present in this repository `conf` directory under `etc` usually is the only step to do.
+Take in account that in order to run the agent you must prepare a configuration file which has to be named `agent.conf` and placed under the `/etc/empower` directory. The syntax of such configuration file is, for the moment, outrageously simple, and just contains the necessary information to reach the controller. Copying the empower folder which is present in this repository `conf` directory under `etc` usually is the only step to do.
 
 Cheers,
 Kewin R.
