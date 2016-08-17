@@ -319,6 +319,9 @@ typedef struct eNB_RRC_UE_s {
   MeasConfig_t*                      measConfig;
   HANDOVER_INFO*                     handover_info;
 
+  /* Information from UE RRC UECapabilityEnquiry */
+  UE_EUTRA_Capability_t              *UE_EUTRA_Capability;
+
 #if defined(ENABLE_SECURITY)
   /* KeNB as derived from KASME received from EPC */
   uint8_t kenb[32];

@@ -1,7 +1,7 @@
-empower-openairinterface
+OAI-5G
 ========================
 
-empower-openairinterface is an integration of EmPOWER Agent (developed by CREATE-NET) library with OpenAirInterface (developed by Eurecom). EmPOWER Agent (EMAge) provides an interface between OpenAirInterface (OAI) stack and SDN Controllers such as e.g. EmPOWER. This helps in exchange of statistics, and control the working of OAI stack by the SDN Controller.
+OAI-5G is an integration of EmPOWER Agent (developed by CREATE-NET) library with OpenAirInterface (developed by Eurecom). EmPOWER Agent (EMAge) provides an interface between OpenAirInterface (OAI) stack and SDN Controllers such as e.g. EmPOWER. This helps in exchange of statistics, and control the working of OAI stack by the SDN Controller.
 
 EmPOWER Agent (EMAge) is under the Apache License, Version 2.0.
 
@@ -52,10 +52,10 @@ Before downloading the code, please follow the instructions below:
  * Disable CPU frequency scaling
  * Install low-latency kernel
 
-Download and build empower-openairinterface: 
+Download and build OAI-5G: 
 ```
-git clone https://github.com/5g-empower/empower-openairinterface.git
-cd empower-openairinterface/emage/proto
+git clone https://github.com/herlesupreeth/OAI-5G.git
+cd OAI-5G/emage/proto
 make clean && make
 cd ../agent
 make clean && make
@@ -65,10 +65,10 @@ cd ../..
 
 Once OAI eNB has been successfully compiled, you are good to go !!!  
 
-Running empower-openairinterface
+Running OAI-5G
 ================================
 
-Prepare a configuration file by the name `agent.conf` and place it under the `/etc/empower` directory. A sample configuration file is provided in `empower-openairinterface/emage/conf/empower/agent.conf`
+Prepare a configuration file by the name `agent.conf` and place it under the `/etc/empower` directory. A sample configuration file is provided in `OAI-5G/emage/conf/empower/agent.conf`
 
 In order to run empower-openairinterface, follow the instructions mentioned in the section `Running eNB, EPC and HSS` in the following link https://gitlab.eurecom.fr/oai/openairinterface5g/wikis/HowToConnectCOTSUEwithOAIeNB.
 

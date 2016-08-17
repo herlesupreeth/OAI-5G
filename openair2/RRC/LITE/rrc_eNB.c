@@ -762,9 +762,9 @@ rrc_eNB_free_mem_UE_context(
     ue_context_pP->ue_context.measConfig = NULL;
   }
 
-  if (ue_context_pP->ue_context.measConfig) {
-    ASN_STRUCT_FREE(asn_DEF_MeasConfig, ue_context_pP->ue_context.measConfig);
-    ue_context_pP->ue_context.measConfig = NULL;
+  if (ue_context_pP->ue_context.UE_EUTRA_Capability) {
+    ASN_STRUCT_FREE(asn_DEF_UE_EUTRA_Capability, ue_context_pP->ue_context.UE_EUTRA_Capability);
+    ue_context_pP->ue_context.UE_EUTRA_Capability = NULL;
   }
 
   //HANDOVER_INFO                     *handover_info;
@@ -4340,6 +4340,7 @@ rrc_eNB_decode_dcch(
       //#ifdef XER_PRINT
       xer_fprint(stdout, &asn_DEF_UE_EUTRA_Capability, (void *)UE_EUTRA_Capability);
       //#endif
+      ue_context_p->ue_context.UE_EUTRA_Capability = UE_EUTRA_Capability;
 
 #if defined(ENABLE_USE_MME)
 
