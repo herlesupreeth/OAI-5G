@@ -177,7 +177,7 @@ set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath -Wl,${CMAKE_CU
 # these changes are related to hardcoded path to include .h files
 add_definitions(-DCMAKER)
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g -DMALLOC_CHECK_=3")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS} -g -DMALLOC_CHECK_=3 -O3") 
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS} -g -DMALLOC_CHECK_=3 -O3")
 
 
 set(GIT_BRANCH        "UNKNOWN")
@@ -203,7 +203,7 @@ if(GIT_FOUND)
     OUTPUT_VARIABLE GIT_COMMIT_HASH
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
-  
+
   # Get the latest commit date of the working branch
   execute_process(
     COMMAND git log -1 --format=%cd
@@ -231,9 +231,9 @@ add_boolean_option(DISABLE_XER_PRINT   False "print XER Format")
 add_boolean_option(XER_PRINT           False "print XER Format")
 add_boolean_option(RRC_MSG_PRINT       False "print RRC messages")
 add_boolean_option(PDCP_MSG_PRINT      False "print PDCP messages to /tmp/pdcp.log")
-add_boolean_option(DEBUG_PDCP_PAYLOAD  False "print PDCP PDU to stdout")  # if true, make sure that global and PDCP log levels are trace 
-add_boolean_option(DEBUG_MAC_INTERFACE False "print MAC-RLC PDU exchange to stdout") # if true, make sure that global and PDCP log levels are trace 
-add_boolean_option(TRACE_RLC_PAYLOAD   False "print RLC PDU to stdout") # if true, make sure that global and PDCP log levels are trace 
+add_boolean_option(DEBUG_PDCP_PAYLOAD  False "print PDCP PDU to stdout")  # if true, make sure that global and PDCP log levels are trace
+add_boolean_option(DEBUG_MAC_INTERFACE False "print MAC-RLC PDU exchange to stdout") # if true, make sure that global and PDCP log levels are trace
+add_boolean_option(TRACE_RLC_PAYLOAD   False "print RLC PDU to stdout") # if true, make sure that global and PDCP log levels are trace
 add_boolean_option(TEST_OMG            False "???")
 add_boolean_option(DEBUG_OMG           False "???")
 add_boolean_option(XFORMS              False "This adds the possibility to see the signal oscilloscope")
@@ -498,7 +498,7 @@ add_list2_option(TRANSP_PRO "None" "Transport protocol type" "None" "ETHERNET")
 include_directories("${OPENAIR_TARGETS}/ARCH/EXMIMO/USERSPACE/LIB/")
 include_directories ("${OPENAIR_TARGETS}/ARCH/EXMIMO/DEFS/")
 #set (option_HWEXMIMOLIB_lib "-l ")
-set(HWLIB_EXMIMO_SOURCE 
+set(HWLIB_EXMIMO_SOURCE
   ${OPENAIR_TARGETS}/ARCH/EXMIMO/USERSPACE/LIB/openair0_lib.c
   ${OPENAIR_TARGETS}/ARCH/EXMIMO/USERSPACE/LIB/gain_control.c
   )
@@ -506,27 +506,27 @@ add_library(oai_exmimodevif MODULE ${HWLIB_EXMIMO_SOURCE} )
 
 include_directories("${OPENAIR_TARGETS}/ARCH/USRP/USERSPACE/LIB/")
 set (option_HWUSRPLIB_lib "-l uhd")
-set(HWLIB_USRP_SOURCE 
+set(HWLIB_USRP_SOURCE
   ${OPENAIR_TARGETS}/ARCH/USRP/USERSPACE/LIB/usrp_lib.cpp
   )
 add_library(oai_usrpdevif MODULE ${HWLIB_USRP_SOURCE} )
 
 include_directories("${OPENAIR_TARGETS}/ARCH/BLADERF/USERSPACE/LIB/")
 set (option_HWBLADERFLIB_lib "-l bladerf")
-set(HWLIB_BLADERF_SOURCE 
+set(HWLIB_BLADERF_SOURCE
   ${OPENAIR_TARGETS}/ARCH/BLADERF/USERSPACE/LIB/bladerf_lib.c
   )
 add_library(oai_bladerfdevif MODULE ${HWLIB_BLADERF_SOURCE} )
 
 include_directories("${OPENAIR_TARGETS}/ARCH/LMSSDR/USERSPACE/LIB/")
 set (option_HWLMSSDRLIB_lib "-l LMS_SDR -l LMS7002M -l Si5351C")
-set(HWLIB_LMSSDR_SOURCE 
+set(HWLIB_LMSSDR_SOURCE
   ${OPENAIR_TARGETS}/ARCH/LMSSDR/USERSPACE/LIB/lms_lib.cpp
   )
 add_library(oai_lmssdrdevif MODULE ${HWLIB_LMSSDR_SOURCE} )
 
 include_directories("${OPENAIR_TARGETS}/ARCH/ETHERNET/USERSPACE/LIB/")
-set(TPLIB_ETHERNET_SOURCE 
+set(TPLIB_ETHERNET_SOURCE
   ${OPENAIR_TARGETS}/ARCH/ETHERNET/USERSPACE/LIB/ethernet_lib.c
   ${OPENAIR_TARGETS}/ARCH/ETHERNET/USERSPACE/LIB/eth_udp.c
   ${OPENAIR_TARGETS}/ARCH/ETHERNET/USERSPACE/LIB/eth_raw.c
@@ -583,12 +583,12 @@ elseif (${RF_BOARD} STREQUAL "CPRIGW")
     )
   include_directories("${OPENAIR_TARGETS}/ARCH/CPRIGW/USERSPACE/LIB/")
   set(option_HW_lib "-rdynamic dl")
-  
+
 endif (${RF_BOARD} STREQUAL "EXMIMO")
 
 
 if (${TRANSP_PRO} STREQUAL "ETHERNET")
-  
+
   include_directories ("${OPENAIR_TARGETS}/ARCH/ETHERNET/USERSPACE/LIB")
   set(TRANSPORT_SOURCE ${TRANSPORT_SOURCE}
     ${OPENAIR_TARGETS}/ARCH/ETHERNET/USERSPACE/LIB/ethernet_lib.c
@@ -597,7 +597,7 @@ if (${TRANSP_PRO} STREQUAL "ETHERNET")
     )
   set(option_TP_lib "-rdynamic -ldl")
 
-  
+
 endif (${TRANSP_PRO} STREQUAL "ETHERNET")
 ##########################################################
 
@@ -849,23 +849,8 @@ Message("EMAGE_AGENT flag  is ${EMAGE_AGENT}")
 
 if (${EMAGE_AGENT})
 
-  set(CNET_EMAGE_DIR ${OPENAIR_DIR}/emage)
-  set(CNET_EMAGE_INC_DIR ${CNET_EMAGE_DIR}/include)
-  set(CNET_EMAGE_PROTO_DIR ${OPENAIR_DIR}/emage/proto)
-  set(CNET_EMAGE_PROTO_H_DIR ${CNET_EMAGE_PROTO_DIR}/pb)
-  set(CNET_EMAGE_PROTO_C_DIR ${CNET_EMAGE_PROTO_DIR}/pb)
-  set(CNET_EMAGE_AGENT_DIR ${OPENAIR_DIR}/emage/agent)
-  set(CNET_EMAGE_TECH_OAI_DIR ${CNET_EMAGE_DIR}/tech/oai)
-
-  include_directories (${CNET_EMAGE_INC_DIR})
-  include_directories (${CNET_EMAGE_PROTO_H_DIR})
-  include_directories (${CNET_EMAGE_TECH_OAI_DIR})
-
-  FIND_LIBRARY(EMAGENT_LIBRARY NAMES "emagent"
-    PATHS ${CNET_EMAGE_AGENT_DIR} NO_DEFAULT_PATH)
-
-  FIND_LIBRARY(EMPROTO_LIBRARY NAMES "emproto"
-    PATHS ${CNET_EMAGE_PROTO_DIR} NO_DEFAULT_PATH)
+  FIND_LIBRARY(EMAGENT_LIBRARY NAMES "emagent" REQUIRED)
+  FIND_LIBRARY(EMPROTO_LIBRARY NAMES "emproto" REQUIRED)
 
   if(NOT EMPROTO_LIBRARY)
     message(FATAL_ERROR "proto library not found")
@@ -875,11 +860,10 @@ if (${EMAGE_AGENT})
     message(FATAL_ERROR "agent library not found")
   endif()
 
-  set(AGENT_PROTO_LIB
-    ${CNET_EMAGE_PROTO_DIR}/libemproto.a
-    ${CNET_EMAGE_AGENT_DIR}/libemagent.a
-  )
+  set(AGENT_PROTO_LIB -lemproto -lemagent)
 
+  set(CNET_EMAGE_TECH_OAI_DIR ${OPENAIR_DIR}/emage_tech_oai)
+  include_directories (${CNET_EMAGE_TECH_OAI_DIR})
   add_library(WRAP_LIB
     ${CNET_EMAGE_TECH_OAI_DIR}/emoai_common.c
     ${CNET_EMAGE_TECH_OAI_DIR}/emoai_layer2.c
@@ -903,9 +887,9 @@ add_library(HASHTABLE
 include_directories(${OPENAIR_DIR}/common/utils/collection/hashtable)
 
 if (MESSAGE_CHART_GENERATOR)
-  add_library(MSC  
+  add_library(MSC
     ${OPENAIR_DIR}/common/utils/msc/msc.c
-  )  
+  )
   set(MSC_LIB MSC)
 endif()
 include_directories(${OPENAIR_DIR}/common/utils/msc)
@@ -1238,7 +1222,7 @@ set(libnas_api_OBJS
   ${NAS_SRC}COMMON/API/NETWORK/nas_message.c
   ${NAS_SRC}COMMON/API/NETWORK/network_api.c
   )
-  
+
 set(libnas_emm_msg_OBJS
   ${NAS_SRC}COMMON/EMM/MSG/AttachAccept.c
   ${NAS_SRC}COMMON/EMM/MSG/AttachComplete.c
@@ -1271,7 +1255,7 @@ set(libnas_emm_msg_OBJS
   ${NAS_SRC}COMMON/EMM/MSG/TrackingAreaUpdateRequest.c
   ${NAS_SRC}COMMON/EMM/MSG/UplinkNasTransport.c
 )
-  
+
 set(libnas_esm_msg_OBJS
   ${NAS_SRC}COMMON/ESM/MSG/ActivateDedicatedEpsBearerContextAccept.c
   ${NAS_SRC}COMMON/ESM/MSG/ActivateDedicatedEpsBearerContextReject.c
@@ -1391,7 +1375,7 @@ set (libnas_utils_OBJS
   ${NAS_SRC}COMMON/UTIL/OctetString.c
 )
 
-if(NAS_UE) 
+if(NAS_UE)
   set(libnas_ue_api_OBJS
     ${NAS_SRC}UE/API/USER/at_command.c
     ${NAS_SRC}UE/API/USER/at_error.c
@@ -1664,7 +1648,7 @@ add_executable(lte-softmodem
   ${OPENAIR3_DIR}/NAS/UE/nas_ue_task.c
   ${GTPU_need_ITTI}
   ${HW_SOURCE}
-  ${TRANSPORT_SOURCE}  
+  ${TRANSPORT_SOURCE}
   ${RTAI_SOURCE}
   ${XFORMS_SOURCE}
   ${XFORMS_SOURCE_SOFTMODEM}
@@ -1705,7 +1689,7 @@ add_executable(lte-softmodem-nos1
   ${OPENAIR2_DIR}/RRC/NAS/rb_config.c
   ${OPENAIR1_DIR}/SIMULATION/ETH_TRANSPORT/netlink_init.c
   ${HW_SOURCE}
-  ${TRANSPORT_SOURCE}  
+  ${TRANSPORT_SOURCE}
   ${RTAI_SOURCE}
   ${XFORMS_SOURCE}
   ${XFORMS_SOURCE_SOFTMODEM}
@@ -1734,15 +1718,15 @@ add_executable(rrh_gw
   ${OPENAIR_TARGETS}/RT/USER/eNB_transport_IQ.c
   ${OPENAIR_TARGETS}/RT/USER/UE_transport_IQ.c
   ${OPENAIR_TARGETS}/RT/USER/rt_wrapper.c
-  ${OPENAIR_TARGETS}/ARCH/COMMON/common_lib.c		
+  ${OPENAIR_TARGETS}/ARCH/COMMON/common_lib.c
   ${HW_SOURCE}
-  ${TRANSPORT_SOURCE}  
+  ${TRANSPORT_SOURCE}
   ${T_SOURCE}
   )
 target_include_directories(rrh_gw PRIVATE  ${OPENAIR_DIR}/common/utils/itti)
 target_link_libraries(rrh_gw
   -Wl,--start-group
-  UTIL LFDS  
+  UTIL LFDS
   -Wl,--end-group )
 target_link_libraries (rrh_gw rt pthread m )
 target_link_libraries (rrh_gw  ${option_HW_lib} ${option_TP_lib} ${LIBBOOST_LIBRARIES} -lboost_system)
@@ -1811,7 +1795,7 @@ add_executable(oaisim
   ${GTPU_need_ITTI}
   ${OPENAIR_TARGETS}/COMMON/create_tasks.c
   ${HW_SOURCE}
-  ${TRANSPORT_SOURCE}  
+  ${TRANSPORT_SOURCE}
   ${XFORMS_SOURCE}
   ${T_SOURCE}
 )
@@ -1854,7 +1838,7 @@ add_executable(oaisim_nos1
   ${OPENAIR2_DIR}/UTIL/OMG/sumo.c
   ${OPENAIR_TARGETS}/COMMON/create_tasks.c
   ${HW_SOURCE}
-  ${TRANSPORT_SOURCE}  
+  ${TRANSPORT_SOURCE}
   ${XFORMS_SOURCE}
   ${T_SOURCE}
 )
@@ -1930,7 +1914,7 @@ add_executable(test_epc_play_scenario
   )
 target_include_directories(test_epc_play_scenario PUBLIC /usr/local/share/asn1c)
 target_link_libraries (test_epc_play_scenario
-  -Wl,--start-group RRC_LIB S1AP_LIB X2AP_LIB GTPV1U LIB_NAS_UE SECU_CN UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB PHY LFDS ${ITTI_LIB} ${MSC_LIB} -Wl,--end-group pthread m rt crypt sctp ${LIBXML2_LIBRARIES} ${LIBXSLT_LIBRARIES} ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} ${CONFIG_LIBRARIES}  
+  -Wl,--start-group RRC_LIB S1AP_LIB X2AP_LIB GTPV1U LIB_NAS_UE SECU_CN UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB PHY LFDS ${ITTI_LIB} ${MSC_LIB} -Wl,--end-group pthread m rt crypt sctp ${LIBXML2_LIBRARIES} ${LIBXSLT_LIBRARIES} ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} ${CONFIG_LIBRARIES}
   )
 if (${EMAGE_AGENT})
   target_link_libraries (test_epc_play_scenario ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
@@ -2116,16 +2100,16 @@ make_driver(ue_ip ${OPENAIR2_DIR}/NETWORK_DRIVER/UE_IP ${ue_ip_src})
 # OCTAVE tools
 ###############
 set(OCT_INCL -I${OPENAIR_TARGETS}/ARCH/EXMIMO/DEFS -I${OPENAIR_TARGETS}/ARCH/EXMIMO/USERSPACE/LIB -I${OPENAIR_TARGETS}/ARCH/COMMON)
-set(OCT_LIBS -L${CMAKE_CURRENT_BINARY_DIR} -lm -lOPENAIR0_LIB) 
+set(OCT_LIBS -L${CMAKE_CURRENT_BINARY_DIR} -lm -lOPENAIR0_LIB)
 set(OCT_FLAGS -DEXMIMO)
 set(OCT_DIR ${OPENAIR_TARGETS}/ARCH/EXMIMO/USERSPACE/OCTAVE)
 set(OCT_FILES
   oarf_config_exmimo.oct
-  oarf_config_exmimo.oct 
-  oarf_get_frame.oct 
-  oarf_stop.oct 
-  oarf_send_frame.oct 
-  oarf_get_num_detected_cards.oct 
+  oarf_config_exmimo.oct
+  oarf_get_frame.oct
+  oarf_stop.oct
+  oarf_send_frame.oct
+  oarf_get_num_detected_cards.oct
   oarf_stop_without_reset.oct
 )
 
@@ -2135,7 +2119,7 @@ foreach(file IN ITEMS ${OCT_FILES})
     OUTPUT ${file}
     DEPENDS ${OCT_DIR}/${src} OPENAIR0_LIB
     COMMAND mkoctfile
-    ARGS ${OCT_FLAGS} ${OCT_INCL} ${OCT_LIBS} 
+    ARGS ${OCT_FLAGS} ${OCT_INCL} ${OCT_LIBS}
     ARGS -o ${file} ${OCT_DIR}/${src}
     COMMENT "Generating ${file}"
     VERBATIM
