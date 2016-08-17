@@ -1,5 +1,0 @@
-
-	Empower eNB Agent simulator
-
-This application shows how to integrate the agent within your application, or 
-how to write a separate application which inherits the agent behavior.
