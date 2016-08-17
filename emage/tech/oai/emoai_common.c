@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-/* 
+/*
  * OAI commonly used function.
  */
 
@@ -110,16 +110,16 @@ int emoai_get_ue_phr (mid_t m_id, ueid_t ue_id) {
 
 unsigned int emoai_get_current_frame (mid_t m_id) {
 	emoai_update_eNB_MAC_inst(m_id);
-	return (enb[m_id])->frame;  
+	return (enb[m_id])->frame;
 }
 
-int emoai_get_tx_queue_size (mid_t m_id, 
+int emoai_get_tx_queue_size (mid_t m_id,
 					         ueid_t ue_id,
 					         logical_chan_id_t channel_id) {
 	rnti_t rnti = emoai_get_ue_crnti(m_id, ue_id);
 	uint16_t frame = (uint16_t) emoai_get_current_frame(m_id);
 	mac_rlc_status_resp_t rlc_status = mac_rlc_status_ind(m_id,
-														  rnti, 
+														  rnti,
 														  m_id,
 														  frame,
 														  ENB_FLAG_YES,
@@ -137,7 +137,7 @@ int emoai_get_MAC_CE_bitmap_TA (mid_t m_id, ueid_t ue_id) {
 		return 0;
 }
 
-unsigned int emoai_get_current_system_frame_num(mid_t m_id) {	
+unsigned int emoai_get_current_system_frame_num(mid_t m_id) {
 	/* System Frame Number : ranges from 0 to 1023. */
 	return (emoai_get_current_frame(m_id) % 1024);
 }
@@ -145,11 +145,11 @@ unsigned int emoai_get_current_system_frame_num(mid_t m_id) {
 unsigned int emoai_get_current_subframe (mid_t m_id) {
 
 	emoai_update_eNB_MAC_inst(m_id);
-	return (enb[m_id])->subframe; 
+	return (enb[m_id])->subframe;
 }
 
 uint16_t emoai_get_sfn_sf (mid_t m_id) {
-  
+
 	frame_t frame;
 	sub_frame_t subframe;
 	uint16_t sfn_sf, frame_mask, sf_mask;
@@ -202,15 +202,15 @@ int emoai_get_ue_trx_antenna (mid_t m_id, ueid_t ue_id) {
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
 
-	if (ue_context_p != NULL && 
+	if (ue_context_p != NULL &&
 					ue_context_p->ue_context.physicalConfigDedicated != NULL) {
 		if (ue_context_p->ue_context.physicalConfigDedicated->antennaInfo->
-			choice.explicitValue.ue_TransmitAntennaSelection.choice.setup == 
+			choice.explicitValue.ue_TransmitAntennaSelection.choice.setup ==
 			AntennaInfoDedicated__ue_TransmitAntennaSelection__setup_closedLoop)
 			return 2;
 		else if (
 			ue_context_p->ue_context.physicalConfigDedicated->antennaInfo->
-			choice.explicitValue.ue_TransmitAntennaSelection.choice.setup == 
+			choice.explicitValue.ue_TransmitAntennaSelection.choice.setup ==
 			AntennaInfoDedicated__ue_TransmitAntennaSelection__setup_openLoop)
 			return 1;
 		else
@@ -225,7 +225,7 @@ int emoai_get_ue_trx_mode (mid_t m_id, ueid_t ue_id) {
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
 
-	if (ue_context_p != NULL && 
+	if (ue_context_p != NULL &&
 		ue_context_p->ue_context.physicalConfigDedicated != NULL) {
 		return ue_context_p->ue_context.physicalConfigDedicated->antennaInfo->
 										choice.explicitValue.transmissionMode;
@@ -238,11 +238,11 @@ int emoai_get_time_alignment_timer (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if (ue_context_p != NULL && 
+	if (ue_context_p != NULL &&
 		ue_context_p->ue_context.mac_MainConfig != NULL) {
 		return ue_context_p->ue_context.mac_MainConfig->
 													timeAlignmentTimerDedicated;
-	}	
+	}
 	return -1;
 }
 
@@ -252,7 +252,7 @@ int emoai_get_tti_bundling (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
+	if(ue_context_p != NULL &&
 		ue_context_p->ue_context.mac_MainConfig != NULL) {
 		return ue_context_p->ue_context.mac_MainConfig->
 													ul_SCH_Config->ttiBundling;
@@ -265,11 +265,11 @@ int emoai_get_maxHARQ_TX (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
+	if(ue_context_p != NULL &&
 		ue_context_p->ue_context.mac_MainConfig != NULL) {
 		return *ue_context_p->ue_context.mac_MainConfig->
 													ul_SCH_Config->maxHARQ_Tx;
-	}	
+	}
 	return -1;
 }
 
@@ -278,8 +278,8 @@ int emoai_get_simult_ack_nack_cqi (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
-		ue_context_p->ue_context.physicalConfigDedicated != NULL && 
+	if(ue_context_p != NULL &&
+		ue_context_p->ue_context.physicalConfigDedicated != NULL &&
 		ue_context_p->ue_context.physicalConfigDedicated->cqi_ReportConfig->
 												cqi_ReportPeriodic != NULL) {
 		return ue_context_p->ue_context.physicalConfigDedicated->
@@ -301,7 +301,7 @@ int emoai_get_aperiodic_cqi_rep_mode (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
+	if(ue_context_p != NULL &&
 		ue_context_p->ue_context.physicalConfigDedicated != NULL) {
 		return *ue_context_p->ue_context.physicalConfigDedicated->
 									cqi_ReportConfig->cqi_ReportModeAperiodic;
@@ -314,16 +314,16 @@ int emoai_get_meas_gap_config (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id,ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
-		ue_context_p->ue_context.measGapConfig != NULL && 
-		ue_context_p->ue_context.measGapConfig->present == 
+	if(ue_context_p != NULL &&
+		ue_context_p->ue_context.measGapConfig != NULL &&
+		ue_context_p->ue_context.measGapConfig->present ==
 													MeasGapConfig_PR_setup) {
 		if (ue_context_p->ue_context.measGapConfig->
-				choice.setup.gapOffset.present == 
+				choice.setup.gapOffset.present ==
 									MeasGapConfig__setup__gapOffset_PR_gp0) {
 			return MEAS_GAP_PATTERN__MGP_GP0;
 		} else if (ue_context_p->ue_context.measGapConfig->
-				choice.setup.gapOffset.present == 
+				choice.setup.gapOffset.present ==
 									MeasGapConfig__setup__gapOffset_PR_gp1) {
 			return MEAS_GAP_PATTERN__MGP_GP1;
 		} else {
@@ -338,17 +338,17 @@ int emoai_get_meas_gap_config_offset (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id,ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
-		ue_context_p->ue_context.measGapConfig != NULL && 
-		ue_context_p->ue_context.measGapConfig->present == 
+	if(ue_context_p != NULL &&
+		ue_context_p->ue_context.measGapConfig != NULL &&
+		ue_context_p->ue_context.measGapConfig->present ==
 													MeasGapConfig_PR_setup) {
 		if (ue_context_p->ue_context.measGapConfig->
-			choice.setup.gapOffset.present == 
+			choice.setup.gapOffset.present ==
 									MeasGapConfig__setup__gapOffset_PR_gp0) {
 			return ue_context_p->ue_context.measGapConfig->
 											choice.setup.gapOffset.choice.gp0;
 		} else if (ue_context_p->ue_context.measGapConfig->
-				choice.setup.gapOffset.present == 
+				choice.setup.gapOffset.present ==
 									MeasGapConfig__setup__gapOffset_PR_gp1) {
 			return ue_context_p->ue_context.measGapConfig->
 											choice.setup.gapOffset.choice.gp1;
@@ -367,47 +367,120 @@ int emoai_get_ue_aggreg_max_bitrate_ul (mid_t m_id, ueid_t ue_id) {
 	return (enb_ue[m_id])->UE_sched_ctrl[ue_id].ue_AggregatedMaximumBitrateUL;
 }
 
-int emoai_get_half_duplex (ueid_t ue_id) {
-	/* Will be implmented later. */
-	/*int halfduplex = 0;
-	int bands_to_scan = ((UE_RRC_INST *)enb_ue_rrc[ue_id])->UECap->
-		UE_EUTRA_Capability->rf_Parameters.supportedBandListEUTRA.list.count;
-	for (int i =0; i < bands_to_scan; i++){
-		if(((UE_RRC_INST *)enb_ue_rrc[ue_id])->UECap->UE_EUTRA_Capability->
-			rf_Parameters.supportedBandListEUTRA.list.array[i]->halfDuplex > 0)
-			halfduplex = 1;
+uint32_t* emoai_get_half_duplex (mid_t m_id, ueid_t ue_id) {
+	struct rrc_eNB_ue_context_s* ue_context_p = NULL;
+	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
+	emoai_update_eNB_RRC_inst(m_id);
+	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
+	uint32_t *halfduplex = NULL;
+
+	if(ue_context_p != NULL &&
+						ue_context_p->ue_context.UE_EUTRA_Capability != NULL) {
+		int bands_to_scan = emoai_get_num_bands(m_id, ue_id);
+		halfduplex = (uint32_t *) malloc(sizeof(uint32_t) * bands_to_scan);
+		for (int i = 0; i < bands_to_scan; i++) {
+			if (ue_context_p->ue_context.UE_EUTRA_Capability->
+				rf_Parameters.supportedBandListEUTRA.list.array[i]->
+															halfDuplex > 0) {
+				halfduplex[i] = 1;
+			} else {
+				halfduplex[i] = 0;
+			}
+		}
 	}
-	return halfduplex;*/
+	return halfduplex;
 }
 
-int emoai_get_intra_sf_hopping (ueid_t ue_id) {
-	/* Will be implmented later. */
-	/*uint8_t temp = 0;
-	temp = (((UE_RRC_INST *)enb_ue_rrc[ue_id])->UECap->
-							UE_EUTRA_Capability->featureGroupIndicators->buf);
-	return (temp & ( 1 << (31)));*/
+int emoai_get_num_bands (mid_t m_id, ueid_t ue_id) {
+	struct rrc_eNB_ue_context_s* ue_context_p = NULL;
+	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
+	emoai_update_eNB_RRC_inst(m_id);
+	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
+
+	if(ue_context_p != NULL &&
+		ue_context_p->ue_context.UE_EUTRA_Capability != NULL) {
+		return ue_context_p->ue_context.UE_EUTRA_Capability->
+								rf_Parameters.supportedBandListEUTRA.list.count;
+	}
+	return 0;
 }
 
-int emoai_get_type2_sb_1 (ueid_t ue_id) {
-	/* Will be implmented later. */
-	/*uint8_t temp = 0;
-	temp = (((UE_RRC_INST *)enb_ue_rrc[ue_id])->UECap->
-							UE_EUTRA_Capability->featureGroupIndicators->buf);
-	return (temp & ( 1 << (11)));*/
+uint32_t* emoai_get_bands (mid_t m_id, ueid_t ue_id) {
+	struct rrc_eNB_ue_context_s* ue_context_p = NULL;
+	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
+	emoai_update_eNB_RRC_inst(m_id);
+	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
+	uint32_t *bands = NULL;
+
+	if(ue_context_p != NULL &&
+						ue_context_p->ue_context.UE_EUTRA_Capability != NULL) {
+		int bands_to_scan = emoai_get_num_bands(m_id, ue_id);
+		bands = (uint32_t *) malloc(sizeof(uint32_t) * bands_to_scan);
+		for (int i = 0; i < bands_to_scan; i++) {
+			bands[i] = ue_context_p->ue_context.UE_EUTRA_Capability->
+							rf_Parameters.supportedBandListEUTRA.list.array[i]->
+																	bandEUTRA;
+		}
+	}
+	return bands;
 }
 
-int emoai_get_ue_category (ueid_t ue_id) {
-	/* Will be implmented later. */
-	/*return (((UE_RRC_INST *)enb_ue_rrc[ue_id])->UECap->
-											UE_EUTRA_Capability->ue_Category);*/
+uint32_t emoai_get_feature_grp_ind (mid_t m_id, ueid_t ue_id) {
+	struct rrc_eNB_ue_context_s* ue_context_p = NULL;
+	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
+	emoai_update_eNB_RRC_inst(m_id);
+	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
+	uint32_t fgi = 0;
+
+	if(ue_context_p != NULL &&
+						ue_context_p->ue_context.UE_EUTRA_Capability != NULL) {
+		/*
+		 * If "featureGroupIndicators" is not included it means UE supports
+		 * everything.
+		*/
+		if (ue_context_p->ue_context.UE_EUTRA_Capability->
+											featureGroupIndicators != NULL) {
+			uint32_t size = ue_context_p->ue_context.UE_EUTRA_Capability->
+												featureGroupIndicators->size;
+			for (int i = 0; i < size; i++) {
+				fgi = fgi << 8;
+				fgi += ue_context_p->ue_context.UE_EUTRA_Capability->
+												featureGroupIndicators->buf[i];
+			}
+			return fgi;
+		} else {
+			return 1;
+		}
+	}
+	return 0;
 }
 
-int emoai_get_res_alloc_type1 (ueid_t ue_id) {
-	/* Will be implmented later. */
-	/*uint8_t temp = 0;
-	temp = (((UE_RRC_INST *)enb_ue_rrc[ue_id])->UECap->
-							UE_EUTRA_Capability->featureGroupIndicators->buf);
-	return (temp & ( 1 << (30)));*/
+int emoai_get_intra_sf_hopping (mid_t m_id, ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (m_id, ue_id);
+	return ((fgi & (1 << 31)) >> 31);
+}
+
+int emoai_get_type2_sb_1 (mid_t m_id, ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (m_id, ue_id);
+	return ((fgi & (1 << 11)) >> 11);
+}
+
+int emoai_get_ue_category (mid_t m_id, ueid_t ue_id) {
+	struct rrc_eNB_ue_context_s* ue_context_p = NULL;
+	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
+	emoai_update_eNB_RRC_inst(m_id);
+	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
+
+	if(ue_context_p != NULL &&
+						ue_context_p->ue_context.UE_EUTRA_Capability != NULL) {
+		return ue_context_p->ue_context.UE_EUTRA_Capability->ue_Category;
+	}
+	return -1;
+}
+
+int emoai_get_res_alloc_type1 (mid_t m_id, ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (m_id, ue_id);
+	return ((fgi & (1 << 30)) >> 30);
 }
 
 int emoai_get_tdd_ack_nack_feedback (mid_t m_id, ueid_t ue_id) {
@@ -415,7 +488,7 @@ int emoai_get_tdd_ack_nack_feedback (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
+	if(ue_context_p != NULL &&
 		ue_context_p->ue_context.physicalConfigDedicated != NULL) {
 		return ue_context_p->ue_context.physicalConfigDedicated->
 								pucch_ConfigDedicated->tdd_AckNackFeedbackMode;
@@ -428,7 +501,7 @@ int emoai_get_ack_nack_repetition_factor (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
+	if(ue_context_p != NULL &&
 		ue_context_p->ue_context.physicalConfigDedicated != NULL) {
 		return ue_context_p->ue_context.physicalConfigDedicated->
 							pucch_ConfigDedicated->
@@ -442,8 +515,8 @@ int emoai_get_extended_bsr_size (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
-		ue_context_p->ue_context.mac_MainConfig != NULL && 
+	if(ue_context_p != NULL &&
+		ue_context_p->ue_context.mac_MainConfig != NULL &&
 			ue_context_p->ue_context.mac_MainConfig->ext2 != NULL) {
 		long val = (*(ue_context_p->ue_context.mac_MainConfig->ext2->
 								mac_MainConfig_v1020->extendedBSR_Sizes_r10));
@@ -459,7 +532,7 @@ int emoai_get_beta_offset_ack_index (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
+	if(ue_context_p != NULL &&
 		ue_context_p->ue_context.physicalConfigDedicated != NULL) {
 		return ue_context_p->ue_context.physicalConfigDedicated->
 									pusch_ConfigDedicated->betaOffset_ACK_Index;
@@ -472,7 +545,7 @@ int emoai_get_beta_offset_ri_index (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
+	if(ue_context_p != NULL &&
 		ue_context_p->ue_context.physicalConfigDedicated != NULL) {
 		return ue_context_p->ue_context.physicalConfigDedicated->
 									pusch_ConfigDedicated->betaOffset_RI_Index;
@@ -485,7 +558,7 @@ int emoai_get_beta_offset_cqi_index (mid_t m_id, ueid_t ue_id) {
 	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
 	emoai_update_eNB_RRC_inst(m_id);
 	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
-	if(ue_context_p != NULL && 
+	if(ue_context_p != NULL &&
 		ue_context_p->ue_context.physicalConfigDedicated != NULL) {
 		return ue_context_p->ue_context.physicalConfigDedicated->
 									pusch_ConfigDedicated->betaOffset_CQI_Index;
@@ -621,7 +694,7 @@ int emoai_get_num_pdcch_symb (mid_t m_id, ccid_t cc_id) {
 	// Buggy. Will be corrected later.
 	LTE_UE_PDCCH *lte_ue_pdcch;
 	lte_ue_pdcch = mac_xface->get_lte_ue_pdcch(m_id, cc_id, m_id);
-	
+
 	return (PHY_vars_UE_g[m_id][cc_id]->
 								lte_ue_pdcch_vars[m_id]->num_pdcch_symbols);*/
 }
