@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-/* 
+/*
  * OAI configurations related technology abstraction implementation for emage.
  */
 
@@ -43,7 +43,7 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 			m_id,
 			request->head->seq,
 			request->head->t_id,
-			MSG_TYPE__CONF_REP, 
+			MSG_TYPE__CONF_REP,
 			&header) != 0)
 		goto error;
 
@@ -55,7 +55,7 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 
 	/* Filling the configuration message. */
 	conf_reply->type = CONFIG_MSG_TYPE__UE_CONF_REPLY;
-	conf_reply->has_type = 1;	
+	conf_reply->has_type = 1;
 	conf_reply->config_msg_case = CONFIGS__CONFIG_MSG_UE_CONF_REPL;
 
 	/* Find out the layers for which configuration was requested. */
@@ -65,25 +65,25 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 		layer = conf_req->layer;
 	}
 
-	/* 
+	/*
 	 * Find out if list of UE RNTIs were provided or not. If not, get all the
 	 * UEs RNTIs in system.
 	 */
 	if (conf_req->n_rnti > 0){
-		/* 
+		/*
 		 * Filter the UEs based on whether the UEs are still registered in \
 		 * system or not.
 		*/
 		ue_RNTIs = malloc(sizeof(uint32_t));
 		for (ue_id = 0; ue_id < conf_req->n_rnti; ue_id++) {
-			/* 
-			 * Find array index corresponding to RNTI of UE. 
+			/*
+			 * Find array index corresponding to RNTI of UE.
 			 * Returns -1 if the OAI system does not have that UE RNTI.
 			*/
 			if (!(find_UE_id(m_id, conf_req->rnti[ue_id]) < 0)) {
 				++n_ue_RNTIs;
 				ue_RNTIs = realloc(ue_RNTIs, n_ue_RNTIs);
-				ue_RNTIs[n_ue_RNTIs -1] = conf_req->rnti[ue_id];				
+				ue_RNTIs[n_ue_RNTIs -1] = conf_req->rnti[ue_id];
 			}
 		}
 	} else {
@@ -99,10 +99,10 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 	UeConfigReply *ue_conf_repl = malloc(sizeof(UeConfigReply));
 	if (ue_conf_repl == NULL)
 		goto error;
-	/* Initialize the UE configuration reply message. */	
+	/* Initialize the UE configuration reply message. */
 	ue_config_reply__init(ue_conf_repl);
 	ue_conf_repl->n_ue_conf = n_ue_RNTIs;
-	
+
 	/* Filling the UE configuration. */
 	UeConfig **ue_conf = NULL;
 
@@ -113,8 +113,8 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 	}
 
 	for (i = 0; i < n_ue_RNTIs; i++) {
-		/* 
-		 * Find array index corresponding to RNTI of UE. 
+		/*
+		 * Find array index corresponding to RNTI of UE.
 		 * Returns -1 if the OAI system does not have that UE RNTI.
 		*/
 		ue_id = find_UE_id(m_id, ue_RNTIs[i]);
@@ -149,8 +149,8 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 
 		/* Check flag for RRC layer configuration. */
 		if ((layer & LAYER_CONFIG__LC_ALL) || (layer & LAYER_CONFIG__LC_RRC)) {
-			/* Add MAC layer related configuration to the UE conf. */
-			if (emoai_get_ue_mac_conf (&ue_conf[i]->rrc_conf,
+			/* Add RRC layer related configuration to the UE conf. */
+			if (emoai_get_ue_rrc_conf (&ue_conf[i]->rrc_conf,
 									   m_id,
 									   ue_id) < 0) {
 				goto error;
@@ -160,7 +160,7 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 	/* Add the UE configuration of all the UEs to final UE config report. */
 	ue_conf_repl->ue_conf = ue_conf;
 	/* Add the collective UE configuration report to configuration reply. */
-	conf_reply->ue_conf_repl = ue_conf_repl;	
+	conf_reply->ue_conf_repl = ue_conf_repl;
 
 	/* Form the main Emage message here. */
 	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
@@ -186,7 +186,7 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 }
 
 int emoai_get_ue_phy_conf (UePhyConfig ** phy_conf, mid_t m_id, ueid_t ue_id) {
-	/* 
+	/*
 	 * Fill in the PHY configuration for the UE.
 	*/
 	*phy_conf = (UePhyConfig *) malloc(sizeof(UePhyConfig));
@@ -199,12 +199,14 @@ int emoai_get_ue_phy_conf (UePhyConfig ** phy_conf, mid_t m_id, ueid_t ue_id) {
 	/* Set the SR configuration. But info is not available. */
 
 	/* Set UE transmission antenna. */
-	if(emoai_get_ue_trx_antenna(m_id, ue_id) != -1){
+	if(emoai_get_ue_trx_antenna(m_id, ue_id) >= 0 &&
+							emoai_get_ue_trx_antenna(m_id, ue_id) < 8){
 		conf->has_ue_trx_antenna = 1;
 		conf->ue_trx_antenna = emoai_get_ue_trx_antenna(m_id, ue_id);
 	}
 	/* Set the transmission mode. */
-	if(emoai_get_ue_trx_mode(m_id, ue_id) != -1){
+	if(emoai_get_ue_trx_mode(m_id, ue_id) >= 0 &&
+							emoai_get_ue_trx_mode(m_id, ue_id) < 3){
 		conf->transmission_mode = emoai_get_ue_trx_mode(m_id, ue_id);
 		conf->has_transmission_mode = 1;
 	}
@@ -217,7 +219,7 @@ int emoai_get_ue_phy_conf (UePhyConfig ** phy_conf, mid_t m_id, ueid_t ue_id) {
 }
 
 int emoai_get_ue_mac_conf (UeMacConfig ** mac_conf, mid_t m_id, ueid_t ue_id) {
-	/* 
+	/*
 	 * Fill in the MAC configuration for the UE.
 	*/
 	*mac_conf = (UeMacConfig *) malloc(sizeof(UeMacConfig));
@@ -229,7 +231,7 @@ int emoai_get_ue_mac_conf (UeMacConfig ** mac_conf, mid_t m_id, ueid_t ue_id) {
 
 	/* Set the time_alignment_timer. */
 	if(emoai_get_time_alignment_timer(m_id, ue_id) != -1){
-		conf->time_alignment_timer = 
+		conf->time_alignment_timer =
 									emoai_get_time_alignment_timer(m_id, ue_id);
 		conf->has_time_alignment_timer = 1;
 	}
@@ -246,13 +248,13 @@ int emoai_get_ue_mac_conf (UeMacConfig ** mac_conf, mid_t m_id, ueid_t ue_id) {
 	/* Set ack_nack_simultaneous_trans (Refer TS 36.213). */
 	if(emoai_get_ack_nack_simult_trans(m_id, ue_id) != -1){
 		conf->has_ack_nack_simultaneous_trans = 1;
-		conf->ack_nack_simultaneous_trans = 
+		conf->ack_nack_simultaneous_trans =
 								emoai_get_ack_nack_simult_trans(m_id, ue_id);
 	}
 	/* Set simultaneous_ack_nack_cqi (Refer TS 36.213). */
 	if(emoai_get_simult_ack_nack_cqi(m_id, ue_id) != -1){
 		conf->has_simultaneous_ack_nack_cqi = 1;
-		conf->simultaneous_ack_nack_cqi = 
+		conf->simultaneous_ack_nack_cqi =
 									emoai_get_simult_ack_nack_cqi(m_id, ue_id);
 	}
 	/* Set type of aperiodic CQI reporting mode. */
@@ -274,7 +276,7 @@ int emoai_get_ue_mac_conf (UeMacConfig ** mac_conf, mid_t m_id, ueid_t ue_id) {
 }
 
 int emoai_get_ue_rrc_conf (UeRrcConfig ** rrc_conf, mid_t m_id, ueid_t ue_id) {
-	/* 
+	/*
 	 * Fill in the RRC configuration for the UE.
 	*/
 	*rrc_conf = (UeRrcConfig *) malloc(sizeof(UeRrcConfig));
@@ -283,18 +285,19 @@ int emoai_get_ue_rrc_conf (UeRrcConfig ** rrc_conf, mid_t m_id, ueid_t ue_id) {
 	if (conf == NULL)
 		goto error;
 	ue_rrc_config__init(conf);
-	
+
 	/* Set the DRX configuration. But its not supported yet. */
 
 	/* Set the measurement gap configuration pattern. */
-	if(emoai_get_meas_gap_config(m_id, ue_id) != -1){
+	if(emoai_get_meas_gap_config(m_id, ue_id) >= 0 &&
+									emoai_get_meas_gap_config(m_id, ue_id) < 3){
 		conf->meas_gap_patt = emoai_get_meas_gap_config(m_id, ue_id);
 		conf->has_meas_gap_patt = 1;
 	}
 	/* Set the measurement gap offset if applicable. */
 	if(conf->has_meas_gap_patt == 1 &&
 		conf->meas_gap_patt != MEAS_GAP_PATTERN__MGP_OFF) {
-		conf->meas_gap_config_sf_offset = 
+		conf->meas_gap_config_sf_offset =
 								emoai_get_meas_gap_config_offset(m_id, ue_id);
 		conf->has_meas_gap_config_sf_offset = 1;
 	}
@@ -304,11 +307,11 @@ int emoai_get_ue_rrc_conf (UeRrcConfig ** rrc_conf, mid_t m_id, ueid_t ue_id) {
 	/* Set the CQI configuration. But info is not available yet. */
 
 	/* Set the aggregated bit-rate of the non-gbr bearer (UL). */
-	conf->ue_aggreg_max_bitrate_ul = 
+	conf->ue_aggreg_max_bitrate_ul =
 							emoai_get_ue_aggreg_max_bitrate_ul(m_id, ue_id);
 	conf->has_ue_aggreg_max_bitrate_ul = 1;
 	/* Set the aggregated bit-rate of the non-gbr bearer (DL). */
-	conf->ue_aggreg_max_bitrate_dl = 
+	conf->ue_aggreg_max_bitrate_dl =
 							emoai_get_ue_aggreg_max_bitrate_dl(m_id, ue_id);
 	conf->has_ue_aggreg_max_bitrate_dl = 1;
 	/* Set the UE capabilities. */
@@ -316,42 +319,54 @@ int emoai_get_ue_rrc_conf (UeRrcConfig ** rrc_conf, mid_t m_id, ueid_t ue_id) {
 	capab = malloc(sizeof(UeCapabilities));
 	ue_capabilities__init(capab);
 	/* Set half duplex (FDD operation). */
-	capab->has_half_duplex = 1;
-	capab->half_duplex = 1;
+	uint32_t* half_dupl = emoai_get_half_duplex(m_id, ue_id);
+	uint32_t num_bands = emoai_get_num_bands(m_id, ue_id);
+	if (half_dupl != NULL) {
+		capab->n_half_duplex = num_bands;
+		capab->half_duplex = half_dupl;
+	}
+	/* Set the EUTRA bands supported by the UE. */
+	uint32_t* bands = emoai_get_bands(m_id, ue_id);
+	if (bands != NULL) {
+		capab->n_band = num_bands;
+		capab->band = bands;
+	}
 	/* Set intra-frame hopping flag. */
 	capab->has_intra_sf_hopping = 1;
-	capab->intra_sf_hopping = 1;
+	capab->intra_sf_hopping = emoai_get_intra_sf_hopping(m_id, ue_id);
 	/* Set support for type 2 hopping with n_sb > 1. */
 	capab->has_type2_sb_1 = 1;
-	capab->type2_sb_1 = 1;
+	capab->type2_sb_1 = emoai_get_type2_sb_1 (m_id, ue_id);
 	/* Set ue category. */
-	capab->has_ue_category = 1;
-	capab->ue_category = 1;
+	if (emoai_get_ue_category(m_id, ue_id) != -1) {
+		capab->has_ue_category = 1;
+		capab->ue_category = emoai_get_ue_category(m_id, ue_id);
+	}
 	/* Set UE support for resource allocation type 1. */
 	capab->has_res_alloc_type1 = 1;
-	capab->res_alloc_type1 = 1;
+	capab->res_alloc_type1 = emoai_get_res_alloc_type1 (m_id, ue_id);
 	/* Set the capabilites to the message. */
 	conf->capabilities = capab;
 	/* Set offset index value for HARQ-ACK. */
 	if(emoai_get_beta_offset_ack_index(m_id, ue_id) != -1){
 		conf->has_beta_offset_ack_index = 1;
-		conf->beta_offset_ack_index = 
+		conf->beta_offset_ack_index =
 								emoai_get_beta_offset_ack_index(m_id, ue_id);
 	}
 	/* Set offset index value for Rank Indication. */
 	if(emoai_get_beta_offset_ri_index(m_id, ue_id) != -1){
 		conf->has_beta_offset_ri_index = 1;
-		conf->beta_offset_ri_index = 
+		conf->beta_offset_ri_index =
 								emoai_get_beta_offset_ri_index(m_id, ue_id);
 	}
 	/* Set offset index value for CQI. */
 	if(emoai_get_beta_offset_cqi_index(m_id, ue_id) != -1){
 		conf->has_beta_offset_cqi_index = 1;
-		conf->beta_offset_cqi_index = 
+		conf->beta_offset_cqi_index =
 								emoai_get_beta_offset_cqi_index(m_id, ue_id);
 	}
 	/* Set type of ACK/NACK feedback mode in TDD. */
-	if(emoai_get_tdd_ack_nack_feedback(m_id, ue_id) >= 0 && 
+	if(emoai_get_tdd_ack_nack_feedback(m_id, ue_id) >= 0 &&
 		emoai_get_tdd_ack_nack_feedback(m_id, ue_id) < 2){
 		conf->has_tdd_ack_nack_feedb = 1;
 		conf->tdd_ack_nack_feedb = emoai_get_tdd_ack_nack_feedback(m_id, ue_id);
@@ -359,7 +374,7 @@ int emoai_get_ue_rrc_conf (UeRrcConfig ** rrc_conf, mid_t m_id, ueid_t ue_id) {
 	/* Set repition factor set for ACK/NACK. */
 	if(emoai_get_ack_nack_repetition_factor(m_id, ue_id) != -1){
 		conf->has_ack_nack_rep_factor = 1;
-		conf->ack_nack_rep_factor = 
+		conf->ack_nack_rep_factor =
 							emoai_get_ack_nack_repetition_factor(m_id, ue_id);
 	}
 	/* Set extended BSR size. */
@@ -377,8 +392,8 @@ int emoai_get_ue_rrc_conf (UeRrcConfig ** rrc_conf, mid_t m_id, ueid_t ue_id) {
 		/* Set index of primary cell. */
 		conf->has_pcell_cc_id = 1;
 		conf->pcell_cc_id = 0;
-		/* 
-		 * Set the secondary cells configuration. But since carrier 
+		/*
+		 * Set the secondary cells configuration. But since carrier
 		 * aggregation is not supported yet.
 		 * We do not set scell_conf field.
 		*/
@@ -417,7 +432,7 @@ int emoai_eNB_config_reply (EmageMsg * request, EmageMsg ** reply) {
 			m_id,
 			request->head->seq,
 			request->head->t_id,
-			MSG_TYPE__CONF_REP, 
+			MSG_TYPE__CONF_REP,
 			&header) != 0)
 		goto error;
 
@@ -429,7 +444,7 @@ int emoai_eNB_config_reply (EmageMsg * request, EmageMsg ** reply) {
 
 	/* Filling the configuration message. */
 	conf_reply->type = CONFIG_MSG_TYPE__ENB_CONF_REPLY;
-	conf_reply->has_type = 1;	
+	conf_reply->has_type = 1;
 	conf_reply->config_msg_case = CONFIGS__CONFIG_MSG_ENB_CONF_REPL;
 
 	/* Find out the layers for which configuration was requested. */
@@ -439,30 +454,30 @@ int emoai_eNB_config_reply (EmageMsg * request, EmageMsg ** reply) {
 		layer = conf_req->layer;
 	}
 
-	/* 
+	/*
 	 * Find out if list of CC IDs were provided or not. If not, get all the
 	 * CC IDs in system.
 	 */
 	if (conf_req->n_cc_id > 0){
-		/* 
+		/*
 		 * Filter the CC IDs based on whether the CC ID exists in the
 		 * system or not.
 		*/
 		CC_IDs = malloc(sizeof(uint32_t));
 		for (cc_id = 0; cc_id < conf_req->n_cc_id; cc_id++) {
-			/* 
+			/*
 			 * For now OAI supports only one CC, therefore the value of
 			 * CC ID provided in request must be less than MAX_NUM_CCs.
-			*/			
-			if (conf_req->cc_id[cc_id] >= 0 && 
+			*/
+			if (conf_req->cc_id[cc_id] >= 0 &&
 							conf_req->cc_id[cc_id] < MAX_NUM_CCs) {
 				++n_CC_IDs;
 				CC_IDs = realloc(CC_IDs, n_CC_IDs);
-				CC_IDs[n_CC_IDs -1] = conf_req->cc_id[cc_id];				
+				CC_IDs[n_CC_IDs -1] = conf_req->cc_id[cc_id];
 			}
 		}
 	} else {
-		/* Fill in the number of CCs in system and its CC ids. */		
+		/* Fill in the number of CCs in system and its CC ids. */
 		n_CC_IDs = MAX_NUM_CCs;
 		CC_IDs = malloc(n_CC_IDs * sizeof(uint32_t));
 		for (cc_id = 0; cc_id < n_CC_IDs; cc_id++) {
@@ -474,10 +489,10 @@ int emoai_eNB_config_reply (EmageMsg * request, EmageMsg ** reply) {
 	EnbConfigReply *eNB_conf_repl = malloc(sizeof(EnbConfigReply));
 	if (eNB_conf_repl == NULL)
 		goto error;
-	/* Initialize the eNB configuration reply message. */	
+	/* Initialize the eNB configuration reply message. */
 	enb_config_reply__init(eNB_conf_repl);
 	eNB_conf_repl->n_cell_conf = n_CC_IDs;
-	
+
 	/* Filling the eNB configuration. */
 	CellConfig **cell_conf;
 
@@ -528,7 +543,7 @@ int emoai_eNB_config_reply (EmageMsg * request, EmageMsg ** reply) {
 	/* Add the configuration of all the Cells to final Cell config report. */
 	eNB_conf_repl->cell_conf = cell_conf;
 	/* Add the collective eNB configuration report to configuration reply. */
-	conf_reply->enb_conf_repl = eNB_conf_repl;	
+	conf_reply->enb_conf_repl = eNB_conf_repl;
 
 	/* Form the main Emage message here. */
 	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
@@ -557,7 +572,7 @@ int emoai_get_cell_phy_conf (CellPhyConfig ** phy_conf,
 							 mid_t m_id,
 							 ccid_t cc_id) {
 	int j;
-	/* 
+	/*
 	 * Fill in the PHY configuration for the Cell.
 	*/
 	*phy_conf = (CellPhyConfig *) malloc(sizeof(CellPhyConfig));
@@ -577,7 +592,7 @@ int emoai_get_cell_phy_conf (CellPhyConfig ** phy_conf,
 	conf->pusch_hopp_offset = emoai_get_hopp_offset(m_id, cc_id);
 	conf->has_pusch_hopp_offset = 1;
 	/* Set the type of hopping mode used. */
-	if (emoai_get_hopp_mode(m_id, cc_id) >= 0 && 
+	if (emoai_get_hopp_mode(m_id, cc_id) >= 0 &&
 										emoai_get_hopp_mode(m_id, cc_id) < 2) {
 		conf->hopp_mode = emoai_get_hopp_mode(m_id, cc_id);
 		conf->has_hopp_mode = 1;
@@ -586,13 +601,13 @@ int emoai_get_cell_phy_conf (CellPhyConfig ** phy_conf,
 	conf->n_sb = emoai_get_n_SB(m_id, cc_id);
 	conf->has_n_sb = 1;
 	/* Set the number of resource element groups used for PHICH. */
-	if (emoai_get_phich_res(m_id, cc_id) >= 0 && 
+	if (emoai_get_phich_res(m_id, cc_id) >= 0 &&
 										emoai_get_phich_res(m_id, cc_id) < 4) {
 		conf->phich_res = emoai_get_phich_res(m_id, cc_id);
 		conf->has_phich_res = 1;
 	}
 	/* Set the PHICH duration used. */
-	if (emoai_get_phich_dur(m_id, cc_id) >= 0 && 
+	if (emoai_get_phich_dur(m_id, cc_id) >= 0 &&
 										emoai_get_phich_dur(m_id, cc_id) < 2) {
 		conf->phich_dur = emoai_get_phich_dur(m_id, cc_id);
 		conf->has_phich_dur = 1;
@@ -645,13 +660,13 @@ int emoai_get_cell_phy_conf (CellPhyConfig ** phy_conf,
 	conf->ul_bw = emoai_get_N_RB_UL(m_id, cc_id);
 	conf->has_ul_bw = 1;
 	/* Set the cyclic prefix length used in uplink. */
-	if (emoai_get_ul_cyc_prefix_len(m_id, cc_id) >= 0 && 
+	if (emoai_get_ul_cyc_prefix_len(m_id, cc_id) >= 0 &&
 								emoai_get_ul_cyc_prefix_len(m_id, cc_id) < 2) {
 		conf->ul_cyc_prefix_len = emoai_get_ul_cyc_prefix_len(m_id, cc_id);
 		conf->has_ul_cyc_prefix_len = 1;
 	}
 	/* Set the cyclic prefix length used in downlink. */
-	if (emoai_get_dl_cyc_prefix_len(m_id, cc_id) >= 0 && 
+	if (emoai_get_dl_cyc_prefix_len(m_id, cc_id) >= 0 &&
 							emoai_get_dl_cyc_prefix_len(m_id, cc_id) < 2) {
 		conf->dl_cyc_prefix_len = emoai_get_dl_cyc_prefix_len(m_id, cc_id);
 		conf->has_dl_cyc_prefix_len = 1;
@@ -660,7 +675,7 @@ int emoai_get_cell_phy_conf (CellPhyConfig ** phy_conf,
 	conf->antenna_ports_count = 1;
 	conf->has_antenna_ports_count = 1;
 	/* Set the type of duplex mode used. */
-	if (emoai_get_dupl_mode(m_id, cc_id) >= 0 && 
+	if (emoai_get_dupl_mode(m_id, cc_id) >= 0 &&
 										emoai_get_dupl_mode(m_id, cc_id) < 2) {
 		conf->dupl_mode = emoai_get_dupl_mode(m_id, cc_id);
 		conf->has_dupl_mode = 1;
@@ -700,7 +715,7 @@ int emoai_get_cell_phy_conf (CellPhyConfig ** phy_conf,
 int emoai_get_cell_mac_conf (CellMacConfig ** mac_conf,
 							 mid_t m_id,
 							 ccid_t cc_id) {
-	/* 
+	/*
 	 * Fill in the MAC configuration for the Cell.
 	*/
 	*mac_conf = (CellMacConfig *) malloc(sizeof(CellMacConfig));
@@ -717,7 +732,7 @@ int emoai_get_cell_mac_conf (CellMacConfig ** mac_conf,
 	conf->special_subframe_patterns = emoai_get_special_sf_pattern(m_id, cc_id);
 	conf->has_special_subframe_patterns = 1;
 	/* Set the timer for RA. MAC contention resolution timer. */
-	conf->mac_cont_resol_timer = 
+	conf->mac_cont_resol_timer =
 						emoai_get_mac_ContentionResolutionTimer(m_id, cc_id);
 	conf->has_mac_cont_resol_timer = 1;
 	/* Set the Maximum Hybrid ARQ for Msg3 transmission. Refer TS 36.321. */
@@ -738,7 +753,7 @@ int emoai_get_cell_rrc_conf (CellRrcConfig ** rrc_conf,
 							 mid_t m_id,
 							 ccid_t cc_id) {
 	int j;
-	/* 
+	/*
 	 * Fill in the RRC configuration for the Cell.
 	*/
 	*rrc_conf = (CellRrcConfig *) malloc(sizeof(CellRrcConfig));
@@ -751,7 +766,7 @@ int emoai_get_cell_rrc_conf (CellRrcConfig ** rrc_conf,
 	/* Set the configuration of MBSFN radio frame period in SIB2. */
 	conf->n_mbsfn_conf_rfperiod = 5;
 	uint32_t *rfperiod;
-	rfperiod = (uint32_t *) malloc(sizeof(uint32_t) * 
+	rfperiod = (uint32_t *) malloc(sizeof(uint32_t) *
 												conf->n_mbsfn_conf_rfperiod);
 	if(rfperiod == NULL)
 		goto error;
@@ -762,7 +777,7 @@ int emoai_get_cell_rrc_conf (CellRrcConfig ** rrc_conf,
 	/* Set the configuration of MBSFN radio frame offset in SIB2. */
 	conf->n_mbsfn_conf_rfoffset = 5;
 	uint32_t *rfoffset;
-	rfoffset = (uint32_t *) malloc(sizeof(uint32_t) * 
+	rfoffset = (uint32_t *) malloc(sizeof(uint32_t) *
 												conf->n_mbsfn_conf_rfoffset);
 	if(rfoffset == NULL)
 		goto error;
@@ -771,12 +786,12 @@ int emoai_get_cell_rrc_conf (CellRrcConfig ** rrc_conf,
 	}
 	conf->mbsfn_conf_rfoffset = rfoffset;
 	/*
-	 * Set the bitmap indicating subframes that are allocated for MBSFN 
+	 * Set the bitmap indicating subframes that are allocated for MBSFN
 	 * within the MBSFN frame.
 	*/
 	conf->n_mbsfn_conf_sfalloc = 5;
 	uint32_t *sfalloc;
-	sfalloc = (uint32_t *) malloc(sizeof(uint32_t) * 
+	sfalloc = (uint32_t *) malloc(sizeof(uint32_t) *
 													conf->n_mbsfn_conf_sfalloc);
 	if(sfalloc == NULL)
 		goto error;
