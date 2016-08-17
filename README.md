@@ -9,7 +9,7 @@ OpenAirInterface is under OpenAirInterface Software Alliance license.
  * http://www.openairinterface.org/?page_id=101
  * http://www.openairinterface.org/?page_id=698
 
-Currently supported messages between OAI and SDN Controller: 
+Currently supported messages between OAI and SDN Controller:
  * Hello
  * RRC measurements, request and reply messages
  * Limited layer 2 statistics, request and reply messages
@@ -24,7 +24,8 @@ Pre-requisites
  * Protocol Buffers C++ (protoc) along with the C++ runtime (Version >= 3.0.0)
  * pkg-config, a helper tool used when compiling applications and libraries
  * Protobuf-c, Google protocol buffer implementation for C (Version >= 1.2.1)
- * Pre-requisites of EMAge
+ * Pre-requisites of OpenAirInterface5G
+ * Agent and Protocol library from EmPOWER Agent (EMAge)
 
 Testbed
 =======
@@ -52,27 +53,33 @@ Before downloading the code, please follow the instructions below:
  * Disable CPU frequency scaling
  * Install low-latency kernel
 
-Download and build OAI-5G: 
-```
-git clone https://github.com/herlesupreeth/OAI-5G.git
-cd OAI-5G/emage/proto
-make clean && make
-cd ../agent
-make clean && make
-cd ../..
-```
-**Please follow rest of the instructions for building OAI eNB, which can be found in the following link https://gitlab.eurecom.fr/oai/openairinterface5g/wikis/HowToConnectCOTSUEwithOAIeNB**
+OAI-5G requires protocol (libemproto) and agent (libemagent) library of EmPOWER Agent to be installed before compiling.
 
-Once OAI eNB has been successfully compiled, you are good to go !!!  
+Download and install protocol (libemproto) and agent (libemagent) library of EmPOWER Agent:
+```
+git clone https://github.com/5g-empower/empower-eNB-agent.git
+cd empower-eNB-agent/proto
+make
+sudo make install
+cd ../agent
+make
+sudo make install
+```
+
+Download and build OAI-5G:
+```
+git clone https://github.com/herlesupreeth/OAI-5G
+```
+**Rest of the instructions for building OAI-5G is similar to building OpenAirInterface5G, which can be found in the following link https://gitlab.eurecom.fr/oai/openairinterface5g/wikis/HowToConnectCOTSUEwithOAIeNB**
+
+Once OAI-5G has been successfully compiled, you are good to go !!!
 
 Running OAI-5G
-================================
+==============
 
-Prepare a configuration file by the name `agent.conf` and place it under the `/etc/empower` directory. A sample configuration file is provided in `OAI-5G/emage/conf/empower/agent.conf`
+Configuration file for EMAge `agent.conf` can be found in the `/etc/empower` directory. One can modify this file to specify the IP address and port number at which EmPOWER (or other SDN Controller) is running.
 
-In order to run empower-openairinterface, follow the instructions mentioned in the section `Running eNB, EPC and HSS` in the following link https://gitlab.eurecom.fr/oai/openairinterface5g/wikis/HowToConnectCOTSUEwithOAIeNB.
-
-Since the EmPOWER agent is already integrated into the OAI eNB code, the agent is activated along with the OAI eNB and NO separate activation command needs to be given.
+In order to run OAI-5G, follow the instructions mentioned in the section `Running eNB, EPC and HSS` in the following link https://gitlab.eurecom.fr/oai/openairinterface5g/wikis/HowToConnectCOTSUEwithOAIeNB.
 
 The EmPOWER agent can be enabled or disabled by setting or unsetting the `EMAGE_AGENT` flag in `CMakeLists.txt` file `empower-openairinterface/cmake_targets/CMakeLists.txt`.
 
