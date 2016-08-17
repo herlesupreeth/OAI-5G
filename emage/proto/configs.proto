@@ -145,6 +145,20 @@ enum ue_transmission_antenna {
 }
 
 //
+// Types of UE transmission mode.
+//
+enum ue_transmission_mode {
+	UETM_TM1 = 0;
+	UETM_TM2 = 1;
+	UETM_TM3 = 2;
+	UETM_TM4 = 3;
+	UETM_TM5 = 4;
+	UETM_TM6 = 5;
+	UETM_TM7 = 6;
+	UETM_TM8 = 7;
+}
+
+//
 // Types of aperiodic CQI reporting mode.
 //
 enum aperiodic_cqi_report_mode {
@@ -449,15 +463,17 @@ message cqi_config {
 //
 message ue_capabilities {
 	// Boolean value. Only half duplex support. FDD operation
-	optional uint32 half_duplex = 1;
+	repeated uint32 half_duplex = 1;
+	// Supported LTE bands.
+	repeated uint32 band = 2;
 	// Boolean value. Support for intra-subframe hopping.
-	optional uint32 intra_SF_hopping = 2;
+	optional uint32 intra_SF_hopping = 3;
 	// Support for type 2 hopping with n_sb > 1
-	optional uint32 type2_sb_1 = 3;
+	optional uint32 type2_sb_1 = 4;
 	// Category of the UE.
-	optional uint32 ue_category = 4;
+	optional uint32 ue_category = 5;
 	// Boolean value. UE support for resource allocation type 1.
-	optional uint32 res_alloc_type1 = 5;
+	optional uint32 res_alloc_type1 = 6;
 }
 
 //
@@ -485,7 +501,7 @@ message ue_phy_config {
 	// Scheduling Request configuration.
 	optional sr_config sr_conf = 1;
 	// Transmission mode 1 (single antenna), 2 (transmit diversity), etc.
-	optional uint32 transmission_mode = 2;
+	optional ue_transmission_mode transmission_mode = 2;
 	// UE transmission antenna type. Related to power control.
 	optional ue_transmission_antenna ue_trx_antenna = 3;
 }
