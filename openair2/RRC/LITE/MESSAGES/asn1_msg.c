@@ -119,7 +119,7 @@ typedef struct xer_sprint_string_s {
 extern unsigned char NB_eNB_INST;
 
 uint16_t two_tier_hexagonal_cellIds[7] = {0,1,2,4,5,7,8};
-uint16_t two_tier_hexagonal_adjacent_cellIds[7][6] = {{1,2,4,5,7,8},    // CellId 0
+uint16_t two_tier_hexagonal_adjacent_cellIds[7][6] = {{1,115,16,15,60,18},//{1,2,4,5,7,8},    // CellId 0
   {11,18,2,0,8,15}, // CellId 1
   {18,13,3,4,0,1},  // CellId 2
   {2,3,14,6,5,0},   // CellId 4
@@ -1451,14 +1451,14 @@ do_RRCConnectionSetup(
   SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold = enb_properties.properties[ctxt_pP->module_id]->srb1_max_retx_threshold;
   SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering     = enb_properties.properties[ctxt_pP->module_id]->srb1_timer_reordering;
   SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = enb_properties.properties[ctxt_pP->module_id]->srb1_timer_status_prohibit;
-#else 
+#else
   SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = T_PollRetransmit_ms20;;
   SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU          = PollPDU_p4;;
   SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte         = PollByte_kBinfinity;
   SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold = UL_AM_RLC__maxRetxThreshold_t8;
   SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering     = T_Reordering_ms35;
   SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = T_StatusProhibit_ms0;
-#endif 
+#endif
 
   SRB1_lchan_config = CALLOC(1,sizeof(*SRB1_lchan_config));
   SRB1_config->logicalChannelConfig   = SRB1_lchan_config;
@@ -1965,7 +1965,7 @@ do_RRCConnectionReconfiguration(
   }
 
   if (MeasId_list != NULL) {
-    rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig           = CALLOC(1,
+    rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig  = CALLOC(1,
         sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig));
     memset((void*)rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig,
            0, sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig));
@@ -1984,6 +1984,17 @@ do_RRCConnectionReconfiguration(
       rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->quantityConfig = NULL;
     }
 
+    // Added for mesaurement reporting - added the field measGapConfig
+    if (measGapConfig != NULL) {
+      rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig = CALLOC(1,
+          sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig));
+      memcpy((void *)rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig,
+             (void *)measGapConfig,
+             sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig));
+    } else {
+      rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig = NULL;
+    }
+
     if(speedStatePars != NULL) {
       rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->speedStatePars = CALLOC(1,
           sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->speedStatePars));
@@ -1995,6 +2006,7 @@ do_RRCConnectionReconfiguration(
 
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->s_Measure= rsrp;
   } else {
+    LOG_I(RRC,"[eNB] MeasIDList is NULL\n");
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig = NULL;
   }
 
