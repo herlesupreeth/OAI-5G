@@ -304,6 +304,7 @@ typedef struct eNB_RRC_UE_s {
   SRB_ToAddModList_t*                SRB_configList;
   DRB_ToAddModList_t*                DRB_configList;
   uint8_t                            DRB_active[8];
+  uint8_t                            DRB_config_action[8];
   struct PhysicalConfigDedicated*    physicalConfigDedicated;
   struct SPS_Config*                 sps_Config;
   MeasObjectToAddMod_t*              MeasObj[MAX_MEAS_OBJ];
