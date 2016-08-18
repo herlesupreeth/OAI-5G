@@ -1,15 +1,15 @@
 
 	EMAge OAI technology
 
-This implements OAI technology specific logic for all the abstractions defined 
-in EmPOWER Agent (EMAge). It interacts with the OAI stack to extract statistics, 
-measurements, configurations and re-configure the working of OAI stack while its 
+This implements OAI technology specific logic for all the abstractions defined
+in EmPOWER Agent (EMAge). It interacts with the OAI stack to extract statistics,
+measurements, configurations and re-configure the working of OAI stack while its
 running.
 
-The EMAge OAI technology is composed of the following parts: 
+The EMAge OAI technology is composed of the following parts:
 
 emage_tech_oai
-├── emoai : Main file which maps the EMAge abstraction callbacks to implementation methods
+├── emoai : Main file which maps the EMAge abstraction callbacks to implemented methods
 ├── emoai_common : Some common OAI utility and helper methods
 ├── emoai_config : Forms the eNB and UE configuration replies
 ├── emoai_layer2 : Forms the Layer 2 related statistics replies
