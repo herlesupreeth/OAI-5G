@@ -191,21 +191,21 @@ void rx_sdu(
         UE_list->UE_template[CC_idP][UE_id].bsr_info[lcgid] = (payload_ptr[0] & 0x3f);
 
 	// update buffer info
-	
+
 	UE_list->UE_template[CC_idP][UE_id].ul_buffer_info[lcgid]=BSR_TABLE[UE_list->UE_template[CC_idP][UE_id].bsr_info[lcgid]];
 
 	UE_list->UE_template[CC_idP][UE_id].ul_total_buffer= UE_list->UE_template[CC_idP][UE_id].ul_buffer_info[lcgid];
 
 	PHY_vars_eNB_g[enb_mod_idP][CC_idP]->pusch_stats_bsr[UE_id][(frameP*10)+subframeP] = (payload_ptr[0] & 0x3f);
 	if (UE_id == UE_list->head)
-	  VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_UE0_BSR,PHY_vars_eNB_g[enb_mod_idP][CC_idP]->pusch_stats_bsr[UE_id][(frameP*10)+subframeP]);	
+	  VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_UE0_BSR,PHY_vars_eNB_g[enb_mod_idP][CC_idP]->pusch_stats_bsr[UE_id][(frameP*10)+subframeP]);
         if (UE_list->UE_template[CC_idP][UE_id].ul_buffer_creation_time[lcgid] == 0 ) {
           UE_list->UE_template[CC_idP][UE_id].ul_buffer_creation_time[lcgid]=frameP;
         }
 	if (mac_eNB_get_rrc_status(enb_mod_idP,UE_RNTI(enb_mod_idP,UE_id)) < RRC_CONNECTED)
 	  LOG_I(MAC, "[eNB %d] CC_id %d MAC CE_LCID %d : ul_total_buffer = %d (lcg increment %d)\n",
 		enb_mod_idP, CC_idP, rx_ces[i], UE_list->UE_template[CC_idP][UE_id].ul_total_buffer,
-		UE_list->UE_template[CC_idP][UE_id].ul_buffer_info[lcgid]);	
+		UE_list->UE_template[CC_idP][UE_id].ul_buffer_info[lcgid]);
       }
       else {
 
@@ -388,11 +388,11 @@ void rx_sdu(
     case  DCCH :
     case DCCH1 :
       //      if(eNB_mac_inst[module_idP][CC_idP].Dcch_lchan[UE_id].Active==1){
-      
+
 
 #if defined(ENABLE_MAC_PAYLOAD_DEBUG)
       LOG_T(MAC,"offset: %d\n",(unsigned char)((unsigned char*)payload_ptr-sduP));
-      
+
       for (j=0; j<32; j++) {
         LOG_T(MAC,"%x ",payload_ptr[j]);
       }
@@ -614,10 +614,10 @@ unsigned char *parse_ulsch_header(unsigned char *mac_header,
 }
 
 
-void schedule_ulsch(module_id_t module_idP, 
+void schedule_ulsch(module_id_t module_idP,
 		    frame_t frameP,
 		    unsigned char cooperation_flag,
-		    sub_frame_t subframeP, 
+		    sub_frame_t subframeP,
 		    unsigned char sched_subframe) {
 
 
@@ -725,7 +725,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 
     // don't schedule if Msg4 is not received yet
     if (UE_list->UE_template[UE_PCCID(module_idP,UE_id)][UE_id].configured==FALSE) {
-      LOG_I(MAC,"[eNB %d] frame %d subfarme %d, UE %d: not configured, skipping UE scheduling \n", 
+      LOG_I(MAC,"[eNB %d] frame %d subfarme %d, UE %d: not configured, skipping UE scheduling \n",
 	    module_idP,frameP,subframeP,UE_id);
       continue;
     }
@@ -753,6 +753,30 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
       if (drop_ue==1)
 	continue;
 
+      int gapOffset = 4;
+      int T = 8;
+      int rcx_gapLength = 5;
+      // 10 = total number of subframes in a frame
+      int next_sfn_check = 10 - rcx_gapLength;
+
+      // MeasGap implementation (hack)
+      if (UE_list->eNB_UE_stats[CC_id][UE_id].rrc_status == 4) {
+        if (((frameP % T) == floor(gapOffset / 10)) && (subframeP == (gapOffset % 10))) {
+          continue;
+        }
+        //(gapOffset % 10) < 5 // check for (SFN + 1) or only SFN  (In next 5 subframe UE does not transmit any data)
+        else if ((gapOffset % 10) < next_sfn_check) {
+          if (((frameP % T) == floor(gapOffset / 10)) && ((gapOffset % 10) < subframeP <= ((gapOffset % 10) + rcx_gapLength)))
+            continue;
+        }
+        //http://howltestuffworks.blogspot.it/2014/07/e-utran-provides-ue-with-measurement.html#comment-form
+        else {
+          if ((((frameP % T) == (floor(gapOffset / 10) + 1)) && (subframeP <= (((gapOffset % 10) + rcx_gapLength) % 10))) ||
+             (((frameP % T) == floor(gapOffset / 10)) && (subframeP > (gapOffset % 10))))
+            continue;
+        }
+      }
+
       if (CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)) {
         LOG_W(MAC,"[eNB %d] frame %d subframe %d, UE %d/%x CC %d: not enough nCCE\n", module_idP,frameP,subframeP,UE_id,rnti,CC_id);
         continue; // break;
@@ -776,7 +800,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
                 module_idP,frameP,subframeP,UE_id,CC_id, harq_pid, round,rnti,mode_string[eNB_UE_stats->mode]);
 
 	PHY_vars_eNB_g[module_idP][CC_id]->pusch_stats_BO[UE_id][(frameP*10)+subframeP] = UE_template->ul_total_buffer;
-	VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_UE0_BO,PHY_vars_eNB_g[module_idP][CC_id]->pusch_stats_BO[UE_id][(frameP*10)+subframeP]);	
+	VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_UE0_BO,PHY_vars_eNB_g[module_idP][CC_id]->pusch_stats_BO[UE_id][(frameP*10)+subframeP]);
         if (((UE_is_to_be_scheduled(module_idP,CC_id,UE_id)>0)) || (round>0))// || ((frameP%10)==0))
           // if there is information on bsr of DCCH, DTCH or if there is UL_SR, or if there is a packet to retransmit, or we want to schedule a periodic feedback every 10 frames
         {
@@ -786,7 +810,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 		UE_sched_ctrl->ul_failure_timer);
           // reset the scheduling request
           UE_template->ul_SR = 0;
-          aggregation = process_ue_cqi(module_idP,UE_id); 
+          aggregation = process_ue_cqi(module_idP,UE_id);
           status = mac_eNB_get_rrc_status(module_idP,rnti);
 	  if (status < RRC_CONNECTED)
 	    cqi_req = 0;
@@ -895,12 +919,12 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 	    LOG_D(MAC,"ul_total_buffer, new %d\n", UE_template->ul_total_buffer);
 	    // Cyclic shift for DM RS
 	    cshift = 0;// values from 0 to 7 can be used for mapping the cyclic shift (36.211 , Table 5.5.2.1.1-1)
-	    	    
+
 	    if (frame_parms->frame_type == TDD) {
 	      switch (frame_parms->N_RB_UL) {
 	      case 6:
 		ULSCH_dci = UE_template->ULSCH_DCI[harq_pid];
-		
+
 		((DCI0_1_5MHz_TDD_1_6_t *)ULSCH_dci)->type     = 0;
 		((DCI0_1_5MHz_TDD_1_6_t *)ULSCH_dci)->hopping  = 0;
 		((DCI0_1_5MHz_TDD_1_6_t *)ULSCH_dci)->rballoc  = rballoc;
@@ -911,7 +935,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 		((DCI0_1_5MHz_TDD_1_6_t *)ULSCH_dci)->padding  = 0;
 		((DCI0_1_5MHz_TDD_1_6_t *)ULSCH_dci)->dai      = UE_template->DAI_ul[sched_subframe];
 		((DCI0_1_5MHz_TDD_1_6_t *)ULSCH_dci)->cqi_req  = cqi_req;
-		
+
 		add_ue_spec_dci(DCI_pdu,
 				ULSCH_dci,
 				rnti,
@@ -921,11 +945,11 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 				format0,
 				0);
 		break;
-		
+
 	      default:
 	      case 25:
 		ULSCH_dci = UE_template->ULSCH_DCI[harq_pid];
-		
+
 		((DCI0_5MHz_TDD_1_6_t *)ULSCH_dci)->type     = 0;
 		((DCI0_5MHz_TDD_1_6_t *)ULSCH_dci)->hopping  = 0;
 		((DCI0_5MHz_TDD_1_6_t *)ULSCH_dci)->rballoc  = rballoc;
@@ -936,7 +960,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 		((DCI0_5MHz_TDD_1_6_t *)ULSCH_dci)->padding  = 0;
 		((DCI0_5MHz_TDD_1_6_t *)ULSCH_dci)->dai      = UE_template->DAI_ul[sched_subframe];
 		((DCI0_5MHz_TDD_1_6_t *)ULSCH_dci)->cqi_req  = cqi_req;
-		
+
 		add_ue_spec_dci(DCI_pdu,
 				ULSCH_dci,
 				rnti,
@@ -946,10 +970,10 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 				format0,
 				0);
 		break;
-		
+
 	      case 50:
 		ULSCH_dci = UE_template->ULSCH_DCI[harq_pid];
-		
+
 		((DCI0_10MHz_TDD_1_6_t *)ULSCH_dci)->type     = 0;
 		((DCI0_10MHz_TDD_1_6_t *)ULSCH_dci)->hopping  = 0;
 		((DCI0_10MHz_TDD_1_6_t *)ULSCH_dci)->rballoc  = rballoc;
@@ -960,7 +984,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 		((DCI0_10MHz_TDD_1_6_t *)ULSCH_dci)->padding  = 0;
 		((DCI0_10MHz_TDD_1_6_t *)ULSCH_dci)->dai      = UE_template->DAI_ul[sched_subframe];
 		((DCI0_10MHz_TDD_1_6_t *)ULSCH_dci)->cqi_req  = cqi_req;
-		
+
 		add_ue_spec_dci(DCI_pdu,
 				ULSCH_dci,
 				rnti,
@@ -970,10 +994,10 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 				format0,
 				0);
 		break;
-		
+
 	      case 100:
 		ULSCH_dci = UE_template->ULSCH_DCI[harq_pid];
-		
+
 		((DCI0_20MHz_TDD_1_6_t *)ULSCH_dci)->type     = 0;
 		((DCI0_20MHz_TDD_1_6_t *)ULSCH_dci)->hopping  = 0;
 		((DCI0_20MHz_TDD_1_6_t *)ULSCH_dci)->rballoc  = rballoc;
@@ -984,7 +1008,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 		((DCI0_20MHz_TDD_1_6_t *)ULSCH_dci)->padding  = 0;
 		((DCI0_20MHz_TDD_1_6_t *)ULSCH_dci)->dai      = UE_template->DAI_ul[sched_subframe];
 		((DCI0_20MHz_TDD_1_6_t *)ULSCH_dci)->cqi_req  = cqi_req;
-		
+
 		add_ue_spec_dci(DCI_pdu,
 				ULSCH_dci,
 				rnti,
@@ -1000,9 +1024,9 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 	      switch (frame_parms->N_RB_UL) {
 	      case 25:
 	      default:
-		
+
 		ULSCH_dci          = UE_template->ULSCH_DCI[harq_pid];
-		
+
 		((DCI0_5MHz_FDD_t *)ULSCH_dci)->type     = 0;
 		((DCI0_5MHz_FDD_t *)ULSCH_dci)->hopping  = 0;
 		((DCI0_5MHz_FDD_t *)ULSCH_dci)->rballoc  = rballoc;
@@ -1012,7 +1036,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 		((DCI0_5MHz_FDD_t *)ULSCH_dci)->cshift   = cshift;
 		((DCI0_5MHz_FDD_t *)ULSCH_dci)->padding  = 0;
 		((DCI0_5MHz_FDD_t *)ULSCH_dci)->cqi_req  = cqi_req;
-		
+
 		add_ue_spec_dci(DCI_pdu,
 				ULSCH_dci,
 				rnti,
@@ -1022,10 +1046,10 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 				format0,
 				0);
 		break;
-		
+
 	      case 6:
 		ULSCH_dci          = UE_template->ULSCH_DCI[harq_pid];
-		
+
 		((DCI0_1_5MHz_FDD_t *)ULSCH_dci)->type     = 0;
 		((DCI0_1_5MHz_FDD_t *)ULSCH_dci)->hopping  = 0;
 		((DCI0_1_5MHz_FDD_t *)ULSCH_dci)->rballoc  = rballoc;
@@ -1035,7 +1059,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 		((DCI0_1_5MHz_FDD_t *)ULSCH_dci)->cshift   = cshift;
 		((DCI0_1_5MHz_FDD_t *)ULSCH_dci)->padding  = 0;
 		((DCI0_1_5MHz_FDD_t *)ULSCH_dci)->cqi_req  = cqi_req;
-		
+
 		add_ue_spec_dci(DCI_pdu,
 				ULSCH_dci,
 				rnti,
@@ -1045,10 +1069,10 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 				format0,
 				0);
 		break;
-		
+
 	      case 50:
 		ULSCH_dci          = UE_template->ULSCH_DCI[harq_pid];
-		
+
 		((DCI0_10MHz_FDD_t *)ULSCH_dci)->type     = 0;
 		((DCI0_10MHz_FDD_t *)ULSCH_dci)->hopping  = 0;
 		((DCI0_10MHz_FDD_t *)ULSCH_dci)->rballoc  = rballoc;
@@ -1058,7 +1082,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 		((DCI0_10MHz_FDD_t *)ULSCH_dci)->padding  = 0;
 		((DCI0_10MHz_FDD_t *)ULSCH_dci)->cshift   = cshift;
 		((DCI0_10MHz_FDD_t *)ULSCH_dci)->cqi_req  = cqi_req;
-		
+
 		add_ue_spec_dci(DCI_pdu,
 				ULSCH_dci,
 				rnti,
@@ -1068,10 +1092,10 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 				format0,
 				0);
 		break;
-		
+
 	      case 100:
 		ULSCH_dci          = UE_template->ULSCH_DCI[harq_pid];
-		
+
 		((DCI0_20MHz_FDD_t *)ULSCH_dci)->type     = 0;
 		((DCI0_20MHz_FDD_t *)ULSCH_dci)->hopping  = 0;
 		((DCI0_20MHz_FDD_t *)ULSCH_dci)->rballoc  = rballoc;
@@ -1081,7 +1105,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 		((DCI0_20MHz_FDD_t *)ULSCH_dci)->padding  = 0;
 		((DCI0_20MHz_FDD_t *)ULSCH_dci)->cshift   = cshift;
 		((DCI0_20MHz_FDD_t *)ULSCH_dci)->cqi_req  = cqi_req;
-		
+
 		add_ue_spec_dci(DCI_pdu,
 				ULSCH_dci,
 				rnti,
@@ -1091,7 +1115,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 				format0,
 				0);
 		break;
-		
+
 	      }
 	    }
 
@@ -1101,12 +1125,12 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
 			      UE_id,
 			      subframeP,
 			      S_UL_SCHEDULED);
-	    
+
 	    LOG_D(MAC,"[eNB %d] CC_id %d Frame %d, subframeP %d: Generated ULSCH DCI for next UE_id %d, format 0\n", module_idP,CC_id,frameP,subframeP,UE_id);
 #ifdef DEBUG
 	    dump_dci(frame_parms, &DCI_pdu->dci_alloc[DCI_pdu->Num_common_dci+DCI_pdu->Num_ue_spec_dci-1]);
 #endif
-	    
+
           }
 	  else {
             T(T_ENB_MAC_UE_UL_SCHEDULE_RETRANSMISSION, T_INT(module_idP), T_INT(CC_id), T_INT(rnti), T_INT(frameP),
@@ -1117,7 +1141,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
                   module_idP,harq_pid,rnti,CC_id,frameP,subframeP,UE_id,mcs,
                   first_rb[CC_id],rb_table[rb_table_index],
                   rb_table_index,TBS,harq_pid,round);
-	  }/* 
+	  }/*
 	  else if (round > 0) { //we schedule a retransmission
 
             ndi = UE_template->oldNDI_UL[harq_pid];
@@ -1138,7 +1162,7 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
                                             first_rb[CC_id],
                                             UE_template->nb_rb_ul[harq_pid]);
             first_rb[CC_id]+=UE_template->nb_rb_ul[harq_pid];  // increment for next UE allocation
-         
+
 	    UE_list->eNB_UE_stats[CC_id][UE_id].num_retransmission_rx+=1;
 	    UE_list->eNB_UE_stats[CC_id][UE_id].rbs_used_retx_rx=UE_template->nb_rb_ul[harq_pid];
 	    UE_list->eNB_UE_stats[CC_id][UE_id].total_rbs_used_rx+=UE_template->nb_rb_ul[harq_pid];
