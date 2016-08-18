@@ -525,6 +525,32 @@ schedule_ue_spec(
         continue_flag=1;
       }
 
+      // MeasGap implementation (hack)
+      int gapOffset = 4;
+      int T = 8;
+      int trx_gapLength = 5;
+      // int trx_gapLength = 6;
+      // 10 = total number of subframes in a frame
+      int next_sfn_check = 10 - trx_gapLength;
+
+      // MeasGap implementation (hack)
+      if (UE_list->eNB_UE_stats[CC_id][UE_id].rrc_status == 4) {
+        if (((frameP % T) == floor(gapOffset / 10)) && (subframeP == (gapOffset % 10))) {
+          continue_flag=1;
+        }
+        //(gapOffset % 10) < 4 // check for (SFN + 1) or only SFN  (In next 6 subframe UE does not expect any data)
+        else if ((gapOffset % 10) < next_sfn_check) {
+          if (((frameP % T) == floor(gapOffset / 10)) && ((gapOffset % 10) < subframeP <= ((gapOffset % 10) + trx_gapLength)))
+            continue_flag=1;
+        }
+        //http://howltestuffworks.blogspot.it/2014/07/e-utran-provides-ue-with-measurement.html#comment-form
+        else {
+          if ((((frameP % T) == (floor(gapOffset / 10) + 1)) && (subframeP <= (((gapOffset % 10) + trx_gapLength) % 10))) || 
+             (((frameP % T) == floor(gapOffset / 10)) && (subframeP > (gapOffset % 10))))
+            continue_flag=1;
+        }
+      }
+
       if ((ue_sched_ctl->pre_nb_available_rbs[CC_id] == 0) ||  // no RBs allocated 
 	  CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)
 	  ) {
