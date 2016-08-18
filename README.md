@@ -1,7 +1,7 @@
 OAI-5G
 ========================
 
-OAI-5G is an integration of EmPOWER Agent (developed by CREATE-NET) library with OpenAirInterface (developed by Eurecom). EmPOWER Agent (EMAge) provides an interface between OpenAirInterface (OAI) stack and SDN Controllers such as e.g. EmPOWER. This helps in exchange of statistics, and control the working of OAI stack by the SDN Controller.
+OAI-5G is an integration of EmPOWER Agent (developed by CREATE-NET) library with OpenAirInterface (developed by Eurecom). EmPOWER Agent (EMAge) provides an interface between OpenAirInterface (OAI) stack and SDN Controllers such as e.g. EmPOWER. This helps in exchange of statistics, measurements, configurations, and control the working of OAI stack by the SDN Controller.
 
 EmPOWER Agent (EMAge) is under the Apache License, Version 2.0.
 
