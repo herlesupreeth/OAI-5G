@@ -751,16 +751,20 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
       }
 
       if (drop_ue==1)
-	continue;
+        continue;
 
-      int gapOffset = 4;
-      int T = 8;
-      int rcx_gapLength = 5;
-      // 10 = total number of subframes in a frame
-      int next_sfn_check = 10 - rcx_gapLength;
+      // MeasGap implementation
+      int gapOffset = mac_eNB_get_rrc_measGap_offset(module_idP, rnti);
+      int mgrp = mac_eNB_get_rrc_measGap_rep_period(module_idP, rnti);
 
-      // MeasGap implementation (hack)
-      if (UE_list->eNB_UE_stats[CC_id][UE_id].rrc_status == 4) {
+      if (gapOffset != -1 && mgrp != -1 &&
+                mac_eNB_get_rrc_status(module_idP, rnti) == RRC_RECONFIGURED) {
+
+        int T = (int) mgrp / 10;
+        int rcx_gapLength = 5;
+        // 10 = total number of subframes in a frame
+        int next_sfn_check = 10 - rcx_gapLength;
+
         if (((frameP % T) == floor(gapOffset / 10)) && (subframeP == (gapOffset % 10))) {
           continue;
         }
