@@ -40,6 +40,7 @@ Hardware:
 
 Software:
  * Latest OAI eNB code from `develop` branch
+ * Latest Openair-cn code from tag `v0.3.2`
  * protoc (Version 3.0.0)
  * protobuf-c (Version 1.2.1)
 
