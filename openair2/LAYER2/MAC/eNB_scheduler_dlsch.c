@@ -525,16 +525,19 @@ schedule_ue_spec(
         continue_flag=1;
       }
 
-      // MeasGap implementation (hack)
-      int gapOffset = 4;
-      int T = 8;
-      int trx_gapLength = 5;
-      // int trx_gapLength = 6;
-      // 10 = total number of subframes in a frame
-      int next_sfn_check = 10 - trx_gapLength;
+      // MeasGap implementation
+      int gapOffset = mac_eNB_get_rrc_measGap_offset(module_idP, rnti);
+      int mgrp = mac_eNB_get_rrc_measGap_rep_period(module_idP, rnti);
 
-      // MeasGap implementation (hack)
-      if (UE_list->eNB_UE_stats[CC_id][UE_id].rrc_status == 4) {
+      if (gapOffset != -1 && mgrp != -1 &&
+                mac_eNB_get_rrc_status(module_idP, rnti) == RRC_RECONFIGURED) {
+
+        int T = (int) mgrp / 10;
+        // MeasurementGap Length (MGL, ms) = 6
+        int trx_gapLength = 5;
+        // 10 = total number of subframes in a frame
+        int next_sfn_check = 10 - trx_gapLength;
+
         if (((frameP % T) == floor(gapOffset / 10)) && (subframeP == (gapOffset % 10))) {
           continue_flag=1;
         }
@@ -545,13 +548,13 @@ schedule_ue_spec(
         }
         //http://howltestuffworks.blogspot.it/2014/07/e-utran-provides-ue-with-measurement.html#comment-form
         else {
-          if ((((frameP % T) == (floor(gapOffset / 10) + 1)) && (subframeP <= (((gapOffset % 10) + trx_gapLength) % 10))) || 
+          if ((((frameP % T) == (floor(gapOffset / 10) + 1)) && (subframeP <= (((gapOffset % 10) + trx_gapLength) % 10))) ||
              (((frameP % T) == floor(gapOffset / 10)) && (subframeP > (gapOffset % 10))))
             continue_flag=1;
         }
       }
 
-      if ((ue_sched_ctl->pre_nb_available_rbs[CC_id] == 0) ||  // no RBs allocated 
+      if ((ue_sched_ctl->pre_nb_available_rbs[CC_id] == 0) ||  // no RBs allocated
 	  CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)
 	  ) {
         LOG_D(MAC,"[eNB %d] Frame %d : no RB allocated for UE %d on CC_id %d: continue \n",
@@ -586,7 +589,7 @@ schedule_ue_spec(
       round = ue_sched_ctl->round[CC_id];
       UE_list->eNB_UE_stats[CC_id][UE_id].crnti= rnti;
       UE_list->eNB_UE_stats[CC_id][UE_id].rrc_status=mac_eNB_get_rrc_status(module_idP,rnti);
-      UE_list->eNB_UE_stats[CC_id][UE_id].harq_pid = harq_pid; 
+      UE_list->eNB_UE_stats[CC_id][UE_id].harq_pid = harq_pid;
       UE_list->eNB_UE_stats[CC_id][UE_id].harq_round = round;
 
       sdu_length_total=0;
@@ -1169,20 +1172,20 @@ schedule_ue_spec(
 	  // do PUCCH power control
           // this is the normalized RX power
 	  eNB_UE_stats =  mac_xface->get_eNB_UE_stats(module_idP,CC_id,rnti);
-	  normalized_rx_power = eNB_UE_stats->Po_PUCCH_dBm; 
+	  normalized_rx_power = eNB_UE_stats->Po_PUCCH_dBm;
 	  target_rx_power = mac_xface->get_target_pucch_rx_power(module_idP,CC_id) + 20;
-	    
+
           // this assumes accumulated tpc
 	  // make sure that we are only sending a tpc update once a frame, otherwise the control loop will freak out
 	  int32_t framex10psubframe = UE_list->UE_template[CC_id][UE_id].pucch_tpc_tx_frame*10+UE_list->UE_template[CC_id][UE_id].pucch_tpc_tx_subframe;
           if (((framex10psubframe+10)<=(frameP*10+subframeP)) || //normal case
 	      ((framex10psubframe>(frameP*10+subframeP)) && (((10240-framex10psubframe+frameP*10+subframeP)>=10)))) //frame wrap-around
-	    if (eNB_UE_stats->Po_PUCCH_update == 1) { 
+	    if (eNB_UE_stats->Po_PUCCH_update == 1) {
 	      eNB_UE_stats->Po_PUCCH_update = 0;
 
 	      UE_list->UE_template[CC_id][UE_id].pucch_tpc_tx_frame=frameP;
 	      UE_list->UE_template[CC_id][UE_id].pucch_tpc_tx_subframe=subframeP;
-	      
+
 	      if (normalized_rx_power>(target_rx_power+1)) {
 		tpc = 0; //-1
 		tpc_accumulated--;
@@ -1192,15 +1195,15 @@ schedule_ue_spec(
 	      } else {
 		tpc = 1; //0
 	      }
-	      /*	      
+	      /*
 	      LOG_I(MAC,"[eNB %d] DLSCH scheduler: frame %d, subframe %d, harq_pid %d, tpc %d, accumulated %d, normalized/target rx power %d/%d\n",
 		    module_idP,frameP, subframeP,harq_pid,tpc,
 		    tpc_accumulated,normalized_rx_power,target_rx_power);*/
 
-	    } // Po_PUCCH has been updated 
+	    } // Po_PUCCH has been updated
 	    else {
 	      tpc = 1; //0
-	    } // time to do TPC update 
+	    } // time to do TPC update
 	  else {
 	    tpc = 1; //0
 	  }
@@ -1553,7 +1556,7 @@ fill_DLSCH_dci(
       continue;
 
     DCI_pdu         = &eNB->common_channels[CC_id].DCI_pdu;
-    
+
 
     // UE specific DCIs
     for (UE_id=UE_list->head; UE_id>=0; UE_id=UE_list->next[UE_id]) {
