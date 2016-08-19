@@ -1484,8 +1484,8 @@ rrc_eNB_generate_defaultRRCConnectionReconfiguration(
   MeasObj->measObject.choice.measObjectEUTRA.carrierFreq = 1850;
   // MeasObj->measObject.choice.measObjectEUTRA.carrierFreq = 3400; //band 7, 2.85GHz
   // MeasObj->measObject.choice.measObjectEUTRA.carrierFreq = 36090; //band 33, 1.909GHz
-  // MeasObj->measObject.choice.measObjectEUTRA.allowedMeasBandwidth = AllowedMeasBandwidth_mbw25;
-  MeasObj->measObject.choice.measObjectEUTRA.allowedMeasBandwidth = AllowedMeasBandwidth_mbw50;
+  // MeasObj->measObject.choice.measObjectEUTRA.allowedMeasBandwidth = AllowedMeasBandwidth_mbw50;
+  MeasObj->measObject.choice.measObjectEUTRA.allowedMeasBandwidth = AllowedMeasBandwidth_mbw25;
   MeasObj->measObject.choice.measObjectEUTRA.presenceAntennaPort1 = 1;
   MeasObj->measObject.choice.measObjectEUTRA.neighCellConfig.buf = CALLOC(1, sizeof(uint8_t));
   MeasObj->measObject.choice.measObjectEUTRA.neighCellConfig.buf[0] = 0;
@@ -1523,11 +1523,11 @@ rrc_eNB_generate_defaultRRCConnectionReconfiguration(
   // vodafone band
   // MeasObj2->measObject.choice.measObjectEUTRA.carrierFreq = 6400; //band 3, 1879MHz
   // The following must be defaulted to measurement in operating freq band.
-  MeasObj2->measObject.choice.measObjectEUTRA.carrierFreq = 6400;
+  MeasObj2->measObject.choice.measObjectEUTRA.carrierFreq = 3150;
   // MeasObj2->measObject.choice.measObjectEUTRA.carrierFreq = 3400; //band 7, 2.85GHz
   // MeasObj2->measObject.choice.measObjectEUTRA.carrierFreq = 36090; //band 33, 1.909GHz
-  // MeasObj2->measObject.choice.measObjectEUTRA.allowedMeasBandwidth = AllowedMeasBandwidth_mbw25;
-  MeasObj2->measObject.choice.measObjectEUTRA.allowedMeasBandwidth = AllowedMeasBandwidth_mbw50;
+  // MeasObj2->measObject.choice.measObjectEUTRA.allowedMeasBandwidth = AllowedMeasBandwidth_mbw50;
+  MeasObj2->measObject.choice.measObjectEUTRA.allowedMeasBandwidth = AllowedMeasBandwidth_mbw25;
   MeasObj2->measObject.choice.measObjectEUTRA.presenceAntennaPort1 = 1;
   MeasObj2->measObject.choice.measObjectEUTRA.neighCellConfig.buf = CALLOC(1, sizeof(uint8_t));
   MeasObj2->measObject.choice.measObjectEUTRA.neighCellConfig.buf[0] = 0;
@@ -2017,7 +2017,7 @@ rrc_eNB_process_MeasurementReport(
         LOG_I(RRC, "RSRQ of Target %d\n",
             (int)*(measResults2->measResultNeighCells->choice.measResultListEUTRA.list.array[i]->
                    measResult.rsrqResult));
-        LOG_I(RRC, "---------------------------------------------------------------------\n");
+        LOG_I(RRC, "<------------------------------------>\n");
       }
     }
 
