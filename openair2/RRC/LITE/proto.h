@@ -32,7 +32,7 @@
  * \date 2010 - 2014
  * \email navid.nikaein@eurecom.fr
  * \version 1.0
- 
+
  */
 /** \addtogroup _rrc
  *  @{
@@ -312,14 +312,14 @@ mac_rrc_data_ind(
 
 void mac_sync_ind( module_id_t Mod_instP, uint8_t status);
 
-void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP, 
-			    const int CC_id, 
+void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP,
+			    const int CC_id,
 			    const frame_t frameP,
 			    const sub_frame_t subframeP,
 			    const rnti_t rnti);
 
-void mac_eNB_rrc_ul_in_sync(const module_id_t Mod_instP, 
-			    const int CC_id, 
+void mac_eNB_rrc_ul_in_sync(const module_id_t Mod_instP,
+			    const int CC_id,
 			    const frame_t frameP,
 			    const sub_frame_t subframeP,
 			    const rnti_t rnti);
@@ -372,6 +372,18 @@ ue_measurement_report_triggering(
 int
 mac_eNB_get_rrc_status(
   const module_id_t Mod_idP,
+  const rnti_t      rntiP
+);
+
+int
+mac_eNB_get_rrc_measGap_offset(
+  const module_id_t module_idP,
+  const rnti_t      rntiP
+);
+
+int
+mac_eNB_get_rrc_measGap_rep_period(
+  const module_id_t module_idP,
   const rnti_t      rntiP
 );
 

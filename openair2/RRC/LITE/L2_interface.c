@@ -719,6 +719,66 @@ mac_eNB_get_rrc_status(
   }
 }
 
+//------------------------------------------------------------------------------
+int
+mac_eNB_get_rrc_measGap_offset(
+  const module_id_t module_idP,
+  const rnti_t      rntiP
+)
+//------------------------------------------------------------------------------
+{
+  struct rrc_eNB_ue_context_s* ue_context_p = NULL;
+  ue_context_p = rrc_eNB_get_ue_context(&eNB_rrc_inst[module_idP], rntiP);
+
+  if (ue_context_p != NULL && ue_context_p->ue_context.measGapConfig != NULL &&
+        ue_context_p->ue_context.measGapConfig->present ==
+                                                      MeasGapConfig_PR_setup) {
+    if (ue_context_p->ue_context.measGapConfig->
+                choice.setup.gapOffset.present ==
+                                      MeasGapConfig__setup__gapOffset_PR_gp0) {
+      return (ue_context_p->ue_context.measGapConfig->
+                                            choice.setup.gapOffset.choice.gp0);
+    } else if (ue_context_p->ue_context.measGapConfig->
+                  choice.setup.gapOffset.present ==
+                                      MeasGapConfig__setup__gapOffset_PR_gp1) {
+      return (ue_context_p->ue_context.measGapConfig->
+                                            choice.setup.gapOffset.choice.gp1);
+    }
+  }
+  return -1;
+}
+
+//------------------------------------------------------------------------------
+int
+mac_eNB_get_rrc_measGap_rep_period(
+  const module_id_t module_idP,
+  const rnti_t      rntiP
+)
+//------------------------------------------------------------------------------
+{
+  struct rrc_eNB_ue_context_s* ue_context_p = NULL;
+  ue_context_p = rrc_eNB_get_ue_context(
+                   &eNB_rrc_inst[module_idP],
+                   rntiP);
+
+  if (ue_context_p != NULL && ue_context_p->ue_context.measGapConfig != NULL &&
+        ue_context_p->ue_context.measGapConfig->present ==
+                                                      MeasGapConfig_PR_setup) {
+    if (ue_context_p->ue_context.measGapConfig->
+            choice.setup.gapOffset.present ==
+                                      MeasGapConfig__setup__gapOffset_PR_gp0) {
+      /* 3GPP TS 36.133 version 10.20.0 Release 10, section 8.1.2.1 */
+      return 40;
+    } else if (ue_context_p->ue_context.measGapConfig->
+                choice.setup.gapOffset.present ==
+                                      MeasGapConfig__setup__gapOffset_PR_gp1) {
+      /* 3GPP TS 36.133 version 10.20.0 Release 10, section 8.1.2.1 */
+      return 80;
+    }
+  }
+  return -1;
+}
+
 void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP,
 			    const int CC_idP,
 			    const frame_t frameP,
@@ -740,8 +800,8 @@ void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP,
   rrc_mac_remove_ue(Mod_instP,rntiP);
 }
 
-void mac_eNB_rrc_ul_in_sync(const module_id_t Mod_instP, 
-			    const int CC_idP, 
+void mac_eNB_rrc_ul_in_sync(const module_id_t Mod_instP,
+			    const int CC_idP,
 			    const frame_t frameP,
 			    const sub_frame_t subframeP,
 			    const rnti_t rntiP)

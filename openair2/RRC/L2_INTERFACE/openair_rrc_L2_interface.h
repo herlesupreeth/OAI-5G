@@ -121,6 +121,7 @@ mac_eNB_get_rrc_status(
   const module_id_t module_idP,
   const rnti_t      indexP
 );
+
 int
 mac_UE_get_rrc_status(
   const module_id_t module_idP,
