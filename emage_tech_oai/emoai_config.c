@@ -20,6 +20,77 @@
 #include "emoai_config.h"
 #include "emoai_common.h"
 
+int emoai_trigger_ue_config_reply (struct ue_conf_params * p) {
+	/* Reply message. */
+	EmageMsg * reply;
+
+	/* Initialize the request message. */
+	EmageMsg * request = (EmageMsg *) malloc(sizeof(EmageMsg));
+	if(request == NULL)
+		goto error;
+	emage_msg__init(request);
+
+	Header *header;
+	/* Initialize header message.
+	 * t_id: is set to zero since its a triggered message from wrapper.
+	 * seq: is currently set to zero but will be updated by the agent.
+	*/
+	if (emoai_create_header(
+			p->b_id,
+			p->m_id,
+			0,
+			0,
+			MSG_TYPE__CONF_REQ,
+			&header) != 0)
+		goto error;
+
+	/* Initialize the configuration message. */
+	Configs *conf_req = (Configs *) malloc(sizeof(Configs));
+	if (conf_req == NULL)
+		goto error;
+	configs__init(conf_req);
+
+	/* Filling the configuration message. */
+	conf_req->type = CONFIG_MSG_TYPE__UE_CONF_REQUEST;
+	conf_req->has_type = 1;
+	conf_req->config_msg_case = CONFIGS__CONFIG_MSG_UE_CONF_REQ;
+
+	/*
+	 * Request message for UEs configuration.
+	 */
+	UeConfigRequest *ue_conf_req;
+	ue_conf_req = (UeConfigRequest *) malloc(sizeof(UeConfigRequest));
+	if (ue_conf_req == NULL)
+		goto error;
+	ue_config_request__init(ue_conf_req);
+
+	ue_conf_req->has_layer = 1;
+	ue_conf_req->layer = LAYER_CONFIG__LC_ALL;
+	ue_conf_req->n_rnti = 1;
+	ue_conf_req->rnti = (uint32_t *) malloc(1 * sizeof(uint32_t));
+	ue_conf_req->rnti[0] = p->rnti;
+
+	conf_req->ue_conf_req = ue_conf_req;
+	request->head = header;
+	request->message_case = EMAGE_MSG__MESSAGE_M_CONFS;
+	request->mconfs = conf_req;
+
+	if (emoai_ue_config_reply(request, &reply) < 0)
+		goto error;
+
+	emage_msg__free_unpacked(request, 0);
+
+	if (em_send(p->b_id, reply) < 0)
+		goto error;
+
+	return 0;
+
+	error:
+		EMLOG("Error triggering UE configuration reply message!");
+		emage_msg__free_unpacked(request, 0);
+		return -1;
+}
+
 int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 
 	// m_id a OAI specific identifier.
@@ -83,7 +154,7 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 			if (!(find_UE_id(m_id, conf_req->rnti[ue_id]) < 0)) {
 				++n_ue_RNTIs;
 				ue_RNTIs = realloc(ue_RNTIs, n_ue_RNTIs);
-				ue_RNTIs[n_ue_RNTIs -1] = conf_req->rnti[ue_id];
+				ue_RNTIs[n_ue_RNTIs - 1] = conf_req->rnti[ue_id];
 			}
 		}
 	} else {
@@ -127,33 +198,38 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 		ue_conf[i]->has_state = 1;
 		ue_conf[i]->state = emoai_get_ue_state(m_id, ue_id);
 
-		/* Check flag for PHY layer configuration. */
-		if ((layer & LAYER_CONFIG__LC_ALL) || (layer & LAYER_CONFIG__LC_PHY)) {
-			/* Add Physical layer related configuration to the UE conf. */
-			if (emoai_get_ue_phy_conf (&ue_conf[i]->phy_conf,
-									   m_id,
-									   ue_id) < 0) {
-				goto error;
+		if (ue_conf[i]->state > UE_STATE__UES_RRC_INACTIVE) {
+			/* Check flag for PHY layer configuration. */
+			if ((layer & LAYER_CONFIG__LC_ALL)
+											|| (layer & LAYER_CONFIG__LC_PHY)) {
+				/* Add Physical layer related configuration to the UE conf. */
+				if (emoai_get_ue_phy_conf (&ue_conf[i]->phy_conf,
+										   m_id,
+										   ue_id) < 0) {
+					goto error;
+				}
 			}
-		}
 
-		/* Check flag for MAC layer configuration. */
-		if ((layer & LAYER_CONFIG__LC_ALL) || (layer & LAYER_CONFIG__LC_MAC)) {
-			/* Add MAC layer related configuration to the UE conf. */
-			if (emoai_get_ue_mac_conf (&ue_conf[i]->mac_conf,
-									   m_id,
-									   ue_id) < 0) {
-				goto error;
+			/* Check flag for MAC layer configuration. */
+			if ((layer & LAYER_CONFIG__LC_ALL)
+											|| (layer & LAYER_CONFIG__LC_MAC)) {
+				/* Add MAC layer related configuration to the UE conf. */
+				if (emoai_get_ue_mac_conf (&ue_conf[i]->mac_conf,
+										   m_id,
+										   ue_id) < 0) {
+					goto error;
+				}
 			}
-		}
 
-		/* Check flag for RRC layer configuration. */
-		if ((layer & LAYER_CONFIG__LC_ALL) || (layer & LAYER_CONFIG__LC_RRC)) {
-			/* Add RRC layer related configuration to the UE conf. */
-			if (emoai_get_ue_rrc_conf (&ue_conf[i]->rrc_conf,
-									   m_id,
-									   ue_id) < 0) {
-				goto error;
+			/* Check flag for RRC layer configuration. */
+			if ((layer & LAYER_CONFIG__LC_ALL)
+											|| (layer & LAYER_CONFIG__LC_RRC)) {
+				/* Add RRC layer related configuration to the UE conf. */
+				if (emoai_get_ue_rrc_conf (&ue_conf[i]->rrc_conf,
+										   m_id,
+										   ue_id) < 0) {
+					goto error;
+				}
 			}
 		}
 	}

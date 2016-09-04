@@ -25,6 +25,7 @@
 #include <emage/pb/main.pb-c.h>
 #include <emage/pb/configs.pb-c.h>
 #include <emage/emlog.h>
+#include <emage/emage.h>
 
 /* UE identifier template. */
 typedef int ueid_t;
@@ -32,6 +33,24 @@ typedef int ueid_t;
 typedef uint32_t mid_t;
 /* Component Carrier (CC) identifier template. */
 typedef int ccid_t;
+
+/* Defines the parameters used to trigger a UE configuration reply message to
+ * be sent when UE changes from one RRC state to another.
+ */
+struct ue_conf_params {
+	/* Module identifier. */
+	mid_t m_id;
+	/* Base station identifier. */
+	uint32_t b_id;
+	/* RNTI of the UE. */
+	uint32_t rnti;
+};
+
+/* Triggers the UE configuration reply when an UE RRC state changes.
+ *
+ * Returns 0 on success, or a negative error code on failure.
+ */
+int emoai_trigger_ue_config_reply (struct ue_conf_params * p);
 
 /* Refers to the UE configuration request and prepares the UE configuration
  * reply.

@@ -191,9 +191,15 @@ int emoai_get_ue_wcqi (mid_t m_id, ueid_t ue_id) {
 //////////////////////////////////////////////////////////////////////////////
 
 int emoai_get_ue_state (mid_t m_id, ueid_t ue_id) {
-	emoai_update_eNB_UE_inst (m_id);
-	int pCCid = UE_PCCID(m_id, ue_id);
-	return (enb_ue[m_id])->eNB_UE_stats[pCCid][ue_id].rrc_status;
+	struct rrc_eNB_ue_context_s* ue_context_p = NULL;
+	uint32_t rntiP = emoai_get_ue_crnti(m_id, ue_id);
+	emoai_update_eNB_RRC_inst(m_id);
+	ue_context_p = rrc_eNB_get_ue_context(enb_rrc[m_id], rntiP);
+
+	if (ue_context_p != NULL && (&ue_context_p->ue_context != NULL)) {
+		return ue_context_p->ue_context.Status;
+	}
+	return UE_STATE__UES_RRC_INACTIVE;
 }
 
 int emoai_get_ue_trx_antenna (mid_t m_id, ueid_t ue_id) {

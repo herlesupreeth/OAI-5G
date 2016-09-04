@@ -60,6 +60,11 @@ extern UE_MAC_INST *UE_mac_inst;
 # include "intertask_interface.h"
 #endif
 
+#if defined (EMAGE_AGENT)
+#   include "emoai_config.h"
+#   include "enb_config.h"
+#endif
+
 //#define RRC_DATA_REQ_DEBUG
 #define DEBUG_RRC 1
 
@@ -797,6 +802,19 @@ void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP,
   else {
     LOG_W(RRC,"Frame %d, Subframe %d: UL failure: UE %x unknown \n",frameP,subframeP,rntiP);
   }
+  #if defined (EMAGE_AGENT)
+    /* OAI does not support RRC_IDLE state for now, its either RRC Connected
+     * state or UE is disconnected from the network.
+     */
+    ue_context_p->ue_context.Status = RRC_INACTIVE;
+    const Enb_properties_array_t* enb_properties = enb_config_get();
+    struct ue_conf_params p;
+    // Only one module is supported in OAI i.e (mod_id 0)
+    p.m_id = 0;
+    p.b_id = enb_properties->properties[p.m_id]->eNB_id;
+    p.rnti = ue_context_p->ue_context.rnti;
+    emoai_trigger_ue_config_reply(&p);
+  #endif
   rrc_mac_remove_ue(Mod_instP,rntiP);
 }
 
