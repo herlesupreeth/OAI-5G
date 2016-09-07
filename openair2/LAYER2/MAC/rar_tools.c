@@ -102,6 +102,8 @@ unsigned short fill_rar(
   rar[4] = (uint8_t)(eNB_mac_inst[module_idP].common_channels[CC_id].RA_template[ra_idx].rnti>>8);
   rar[5] = (uint8_t)(eNB_mac_inst[module_idP].common_channels[CC_id].RA_template[ra_idx].rnti&0xff);
   //eNB_mac_inst[module_idP].common_channels[CC_id].RA_template[ra_idx].timing_offset = 0;
+  // RACH response timing advance command value is set in following 3 statements. During RACH response
+  // N_TA = TA * 16;
   eNB_mac_inst[module_idP].common_channels[CC_id].RA_template[ra_idx].timing_offset /= 16; //T_A = N_TA/16, where N_TA should be on a 30.72Msps
   rar[0] = (uint8_t)(eNB_mac_inst[module_idP].common_channels[CC_id].RA_template[ra_idx].timing_offset>>(2+4)); // 7 MSBs of timing advance + divide by 4
   rar[1] = (uint8_t)(eNB_mac_inst[module_idP].common_channels[CC_id].RA_template[ra_idx].timing_offset<<(4-2))&0xf0; // 4 LSBs of timing advance + divide by 4

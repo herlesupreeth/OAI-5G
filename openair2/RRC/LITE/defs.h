@@ -135,7 +135,7 @@ typedef struct uid_linear_allocator_s {
 
 #define PROTOCOL_RRC_CTXT_FMT           PROTOCOL_CTXT_FMT
 #define PROTOCOL_RRC_CTXT_ARGS(CTXT_Pp) PROTOCOL_CTXT_ARGS(CTXT_Pp)
-/** @defgroup _rrc RRC 
+/** @defgroup _rrc RRC
  * @ingroup _oai2
  * @{
  */
@@ -175,9 +175,12 @@ typedef enum HO_STATE_e {
 #define RRM_CALLOC(t,n)   (t *) malloc16( sizeof(t) * n)
 #define RRM_CALLOC2(t,s)  (t *) malloc16( s )
 
-#define MAX_MEAS_OBJ 6
-#define MAX_MEAS_CONFIG 6
-#define MAX_MEAS_ID 6
+// #define MAX_MEAS_OBJ 6
+// #define MAX_MEAS_CONFIG 6
+// #define MAX_MEAS_ID 6
+#define MAX_MEAS_OBJ 32
+#define MAX_MEAS_CONFIG 32
+#define MAX_MEAS_ID 32
 
 #define PAYLOAD_SIZE_MAX 1024
 #define RRC_BUF_SIZE 255

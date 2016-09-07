@@ -308,7 +308,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	    // randomize frequency allocation for RA
 	    while (1) {
 	      first_rb = (unsigned char)(taus()%(PHY_vars_eNB_g[module_idP][CC_id]->lte_frame_parms.N_RB_DL-4));
-	      
+
 	      if ((vrb_map[first_rb] != 1) && (vrb_map[first_rb+3] != 1))
 		break;
 	    }
@@ -358,7 +358,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 		((DCI1A_1_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->rballoc= mac_xface->computeRIV(PHY_vars_eNB_g[module_idP][CC_id]->lte_frame_parms.N_RB_DL,first_rb,4);
 		rballoc[CC_id] |= mac_xface->get_rballoc(((DCI1A_1_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->vrb_type,
 							 ((DCI1A_1_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->rballoc);
-		
+
                 break;
 
               case 25:
@@ -384,7 +384,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
                   ((DCI1A_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->mcs=9;
                   TBsize = 57;
                 }
-		
+
 		((DCI1A_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->type=1;
 		((DCI1A_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->vrb_type=0;
 		((DCI1A_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->rv=0;
@@ -613,12 +613,12 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 			      RA_template->RA_dci_size_bits2,
 			      RA_template->RA_dci_fmt2,
 			      0);
-	      
+
 	      RA_template->generate_Msg4=0;
 	      RA_template->wait_ack_Msg4=1;
 	      RA_template->RA_active = FALSE;
 	      lcid=0;
-	      
+
 	      if ((TBsize - rrc_sdu_length - msg4_header) <= 2) {
 		msg4_padding = TBsize - rrc_sdu_length - msg4_header;
 		msg4_post_padding = 0;
@@ -626,7 +626,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 		msg4_padding = 0;
 		msg4_post_padding = TBsize - rrc_sdu_length - msg4_header -1;
 	      }
-	      
+
 	      LOG_I(MAC,"[eNB %d][RAPROC] CC_id %d Frame %d subframeP %d Msg4 : TBS %d, sdu_len %d, msg4_header %d, msg4_padding %d, msg4_post_padding %d\n",
 		    module_idP,CC_id,frameP,subframeP,TBsize,rrc_sdu_length,msg4_header,msg4_padding,msg4_post_padding);
 	      DevAssert( UE_id != UE_INDEX_INVALID ); // FIXME not sure how to gracefully return
@@ -639,11 +639,11 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 					     RA_template->cont_res_id,  // contention res id
 					     msg4_padding,                // no padding
 					     msg4_post_padding);
-	      
+
 	      memcpy((void*)&eNB->UE_list.DLSCH_pdu[CC_id][0][(unsigned char)UE_id].payload[0][(unsigned char)offset],
 		     &eNB->common_channels[CC_id].CCCH_pdu.payload[0],
 		     rrc_sdu_length);
-	      
+
 	      if (opt_enabled==1) {
 		trace_pdu(1, (uint8_t *)eNB->UE_list.DLSCH_pdu[CC_id][0][(unsigned char)UE_id].payload[0],
 			  rrc_sdu_length, UE_id, 3, UE_RNTI(module_idP, UE_id),
@@ -651,7 +651,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 		LOG_D(OPT,"[eNB %d][DLSCH] CC_id %d Frame %d trace pdu for rnti %x with size %d\n",
 		      module_idP, CC_id, frameP, UE_RNTI(module_idP,UE_id), rrc_sdu_length);
 	      }
-	      
+
 	    }
 	  }
 
@@ -664,7 +664,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	      module_idP,CC_id,frameP,subframeP);
 	// Get candidate harq_pid from PHY
 	mac_xface->get_ue_active_harq_pid(module_idP,CC_id,RA_template->rnti,frameP,subframeP,&harq_pid,&round,0);
-	
+
 	if (round>0) {
 	  //RA_template->wait_ack_Msg4++;
 	  // we have to schedule a retransmission
@@ -673,12 +673,12 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	  } else {
 	    ((DCI1A_5MHz_FDD_t*)&RA_template->RA_alloc_pdu2[0])->ndi=1;
 	  }
-	  
+
 	  /*
 	  // randomize frequency allocation for RA
 	  while (1) {
 	    first_rb = (unsigned char)(taus()%(PHY_vars_eNB_g[module_idP][CC_id]->lte_frame_parms.N_RB_DL-4));
-	    
+
 	    if ((vrb_map[first_rb] != 1) && (vrb_map[first_rb+3] != 1))
 	      break;
 	  }
@@ -688,7 +688,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	  vrb_map[first_rb+1] = 1;
 	  vrb_map[first_rb+2] = 1;
 	  vrb_map[first_rb+3] = 1;
-	  
+
 	  if (PHY_vars_eNB_g[module_idP][CC_id]->lte_frame_parms.frame_type == TDD) {
 	    ((DCI1A_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->rballoc = mac_xface->computeRIV(PHY_vars_eNB_g[module_idP][CC_id]->lte_frame_parms.N_RB_UL,first_rb,4);
 	    rballoc[CC_id] |= mac_xface->get_rballoc(((DCI1A_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->vrb_type,
@@ -698,7 +698,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	    rballoc[CC_id] |= mac_xface->get_rballoc(((DCI1A_5MHz_FDD_t*)&RA_template->RA_alloc_pdu2[0])->vrb_type,
 						     ((DCI1A_5MHz_FDD_t*)&RA_template->RA_alloc_pdu2[0])->rballoc);
 	  }
-	  
+
 	  if (!CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,2,RA_template->rnti)) {
 	    add_ue_spec_dci(DCI_pdu,
 			    (void*)&RA_template->RA_alloc_pdu2[0],
@@ -723,10 +723,10 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	  UE_id = find_UE_id(module_idP,RA_template->rnti);
 	  DevAssert( UE_id != -1 );
 	  eNB_mac_inst[module_idP].UE_list.UE_template[UE_PCCID(module_idP,UE_id)][UE_id].configured=TRUE;
-	  
+
 	}
       }
-    } // for i=0 .. N_RA_PROC-1 
+    } // for i=0 .. N_RA_PROC-1
   } // CC_id
 
   stop_meas(&eNB->schedule_ra);
@@ -750,6 +750,7 @@ void initiate_ra_proc(module_id_t module_idP, int CC_id,frame_t frameP, uint16_t
       RA_template[i].generate_rar=1;
       RA_template[i].generate_Msg4=0;
       RA_template[i].wait_ack_Msg4=0;
+      // N_TA value is stored.
       RA_template[i].timing_offset=timing_offset;
       // Put in random rnti (to be replaced with proper procedure!!)
       RA_template[i].rnti = taus();

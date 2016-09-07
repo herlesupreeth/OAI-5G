@@ -62,7 +62,6 @@ extern UE_MAC_INST *UE_mac_inst;
 
 #if defined (EMAGE_AGENT)
 #   include "emoai_config.h"
-#   include "enb_config.h"
 #endif
 
 //#define RRC_DATA_REQ_DEBUG
@@ -796,25 +795,21 @@ void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP,
                    rntiP);
 
   if (ue_context_p != NULL) {
+    #if defined (EMAGE_AGENT)
+      /* OAI does not support RRC_IDLE state for now, its either RRC Connected
+       * state or UE is disconnected from the network.
+       */
+      ue_context_p->ue_context.Status = RRC_INACTIVE;
+      /* If UE is in inactive state, trigger the UEs ID report if it exists.
+       */
+      emoai_trig_UEs_ID_report();
+    #endif
     LOG_I(RRC,"Frame %d, Subframe %d: UE %x UL failure, activating timer\n",frameP,subframeP,rntiP);
     ue_context_p->ue_context.ul_failure_timer=1;
   }
   else {
     LOG_W(RRC,"Frame %d, Subframe %d: UL failure: UE %x unknown \n",frameP,subframeP,rntiP);
   }
-  #if defined (EMAGE_AGENT)
-    /* OAI does not support RRC_IDLE state for now, its either RRC Connected
-     * state or UE is disconnected from the network.
-     */
-    ue_context_p->ue_context.Status = RRC_INACTIVE;
-    const Enb_properties_array_t* enb_properties = enb_config_get();
-    struct ue_conf_params p;
-    // Only one module is supported in OAI i.e (mod_id 0)
-    p.m_id = 0;
-    p.b_id = enb_properties->properties[p.m_id]->eNB_id;
-    p.rnti = ue_context_p->ue_context.rnti;
-    emoai_trigger_ue_config_reply(&p);
-  #endif
   rrc_mac_remove_ue(Mod_instP,rntiP);
 }
 

@@ -192,6 +192,9 @@ generate_dlsch_header(
     //    msg("last_size %d,mac_header_ptr %p\n",last_size,mac_header_ptr);
     ((TIMING_ADVANCE_CMD *)ce_ptr)->R=0;
     ((TIMING_ADVANCE_CMD *)ce_ptr)->TA=(timing_advance_cmd+31)&0x3f;
+    // For type 2, location measurements add timing_advance_cmd with
+    // ue_rx_tx_time_diff got in rrc measurement to obtain RTT in Ts.
+    // distance = speed of light * RTT /2
     LOG_D(MAC,"timing advance =%d (%d)\n",timing_advance_cmd,((TIMING_ADVANCE_CMD *)ce_ptr)->TA);
     ce_ptr+=sizeof(TIMING_ADVANCE_CMD);
     //msg("offset %d\n",ce_ptr-mac_header_control_elements);
@@ -525,35 +528,6 @@ schedule_ue_spec(
         continue_flag=1;
       }
 
-      // MeasGap implementation
-      int gapOffset = mac_eNB_get_rrc_measGap_offset(module_idP, rnti);
-      int mgrp = mac_eNB_get_rrc_measGap_rep_period(module_idP, rnti);
-
-      if (gapOffset != -1 && mgrp != -1 &&
-                mac_eNB_get_rrc_status(module_idP, rnti) == RRC_RECONFIGURED) {
-
-        int T = (int) mgrp / 10;
-        // MeasurementGap Length (MGL, ms) = 6
-        int trx_gapLength = 5;
-        // 10 = total number of subframes in a frame
-        int next_sfn_check = 10 - trx_gapLength;
-
-        if (((frameP % T) == floor(gapOffset / 10)) && (subframeP == (gapOffset % 10))) {
-          continue_flag=1;
-        }
-        //(gapOffset % 10) < 4 // check for (SFN + 1) or only SFN  (In next 6 subframe UE does not expect any data)
-        else if ((gapOffset % 10) < next_sfn_check) {
-          if (((frameP % T) == floor(gapOffset / 10)) && ((gapOffset % 10) < subframeP <= ((gapOffset % 10) + trx_gapLength)))
-            continue_flag=1;
-        }
-        //http://howltestuffworks.blogspot.it/2014/07/e-utran-provides-ue-with-measurement.html#comment-form
-        else {
-          if ((((frameP % T) == (floor(gapOffset / 10) + 1)) && (subframeP <= (((gapOffset % 10) + trx_gapLength) % 10))) ||
-             (((frameP % T) == floor(gapOffset / 10)) && (subframeP > (gapOffset % 10))))
-            continue_flag=1;
-        }
-      }
-
       if ((ue_sched_ctl->pre_nb_available_rbs[CC_id] == 0) ||  // no RBs allocated
 	  CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)
 	  ) {
@@ -573,6 +547,63 @@ schedule_ue_spec(
                     UE_list);
         // update UL DAI after DLSCH scheduling
         set_ul_DAI(module_idP,UE_id,CC_id,frameP,subframeP,frame_parms);
+      }
+
+      // MeasGap implementation
+      int gapOffset = mac_eNB_get_rrc_measGap_offset(module_idP, rnti);
+      int mgrp = mac_eNB_get_rrc_measGap_rep_period(module_idP, rnti);
+
+      if (gapOffset != -1 && mgrp != -1 &&
+                mac_eNB_get_rrc_status(module_idP, rnti) == RRC_RECONFIGURED) {
+
+        int T = (int) mgrp / 10;
+        // MeasurementGap Length (MGL, ms) = 6
+        int trx_gapLength = 6;
+        int total_subfr = 10;
+        int total_sfn = 1024;
+        int sfnMODt = (int) (frameP % T);
+        int floor_gapOffsetDIV10 = (int) floor(gapOffset / 10);
+        int gapOffsetMOD10 = (int) (gapOffset % 10);
+        int PUSCH_timing = 0;
+        if (frame_parms[CC_id]->frame_type == FDD) {
+          /* PUSCH transmitted 4ms after DCI transmission. */
+          PUSCH_timing = 4;
+        } else {
+          /* Maximum value among all TDD UL/DL configurations. */
+          /* Need to fix it as per UL/DL config. */
+          // PUSCH_timing = 7;
+        }
+
+        if (gapOffsetMOD10 < PUSCH_timing) {
+          int nxt_sfnMODt = (int) ((frameP + 1) % total_sfn) % T;
+          /* E.g. if gapOffset = 3, gp1, in SFN 23, don't schedule UE on
+           * 9th subframe and in SFN 24 don't schedule UE on subframes
+           * 1,2,3,4,5,6,7,8.
+           */
+          if ((sfnMODt == floor_gapOffsetDIV10) &&
+                              (subframeP < (gapOffsetMOD10 + trx_gapLength))) {
+            continue_flag = 1;
+          }
+          else if ((nxt_sfnMODt == floor_gapOffsetDIV10) &&
+              (subframeP >= ((gapOffsetMOD10 - PUSCH_timing) % total_subfr))) {
+            continue_flag = 1;
+          }
+        }
+        else if (gapOffsetMOD10 >= PUSCH_timing) {
+          int pre_sfnModt = (int) ((frameP - 1) % total_sfn) % T;
+          /* E.g. if gapOffset = 5, gp1, in SFN 24, don't schedule UE on
+           * subframes 1,2,3,4,5,6,7,8,9 and in SFN 25 don't schedule UE on
+           * 0th subframe.
+           */
+          if ((sfnMODt == floor_gapOffsetDIV10) &&
+                              (subframeP >= (gapOffsetMOD10 - PUSCH_timing))) {
+            continue_flag = 1;
+          }
+          else if ((pre_sfnModt == floor_gapOffsetDIV10) &&
+              (subframeP < ((gapOffsetMOD10 + trx_gapLength) % total_subfr))) {
+            continue_flag = 1;
+          }
+        }
       }
 
       if (continue_flag == 1 ) {

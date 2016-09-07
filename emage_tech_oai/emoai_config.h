@@ -26,92 +26,91 @@
 #include <emage/pb/configs.pb-c.h>
 #include <emage/emlog.h>
 #include <emage/emage.h>
+#include "emoai_common.h"
+
+#include "MeasObjectEUTRA.h"
+#include "ReportConfigEUTRA.h"
+#include "openair2/RRC/LITE/defs.h"
 
 /* UE identifier template. */
 typedef int ueid_t;
-/* Module identifier template. */
-typedef uint32_t mid_t;
 /* Component Carrier (CC) identifier template. */
 typedef int ccid_t;
+/* Radio Network Temporary identifier template. */
+typedef uint16_t rnti_t;
+/* Transaction identifier template. */
+typedef uint32_t tid_t;
 
-/* Defines the parameters used to trigger a UE configuration reply message to
- * be sent when UE changes from one RRC state to another.
+/* Trigger to send UE IDs to controller. Triggered when a UE is attached or
+ * detached from the network.
+ *
+ * Returns 0 on success, or a negative error code on failure.
  */
-struct ue_conf_params {
-	/* Module identifier. */
-	mid_t m_id;
-	/* Base station identifier. */
-	uint32_t b_id;
+int emoai_trig_UEs_ID_report (void);
+
+/* Parses the UEs ID request and prepares the list of UE identifiers of
+ * UEs attached to network.
+ *
+ * Returns 0 on success, or a negative error code on failure.
+ */
+int emoai_UEs_ID_report (EmageMsg * request, EmageMsg ** reply);
+
+/* Trigger to send UE's RRC measurement configuration to controller.
+ * Triggered whenever an UE sends reconfiguration complete or connection
+ * restablishment.
+ *
+ * Returns 0 on success, or a negative error code on failure.
+ */
+int emoai_trig_RRC_meas_conf_report (rnti_t * rnti);
+
+/* Helps in forming EUTRA measurement object for RRC measurement configuration
+ * reply.
+ *
+ * Returns 0 on success, or a negative error code on failure.
+ */
+int emoai_form_EUTRA_meas_obj (MeasObjectEUTRA_t m_obj, MeasObjEUTRA ** m);
+
+/* Helps in forming EUTRA report configuration object for RRC measurement
+ * configuration reply.
+ *
+ * Returns 0 on success, or a negative error code on failure.
+ */
+int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA ** r);
+
+/* Parses the UE's RRC measurement configuration request and prepares
+ * reply with UEs RRC measurement configuration.
+ *
+ * Returns 0 on success, or a negative error code on failure.
+ */
+int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply);
+
+/* Request parameters related to RRC measurements configuration trigger.
+ */
+struct rrc_m_conf_trigg {
+	/* Tree related data. */
+	RB_ENTRY(rrc_m_conf_trigg) rrc_m_c_t;
+	/* Transaction identifier. */
+	tid_t t_id;
 	/* RNTI of the UE. */
 	uint32_t rnti;
 };
 
-/* Triggers the UE configuration reply when an UE RRC state changes.
- *
- * Returns 0 on success, or a negative error code on failure.
+/* Compares two triggers based on UE rnti.
  */
-int emoai_trigger_ue_config_reply (struct ue_conf_params * p);
+int rrc_m_conf_comp_trigg (
+	struct rrc_m_conf_trigg* t1,
+	struct rrc_m_conf_trigg* t2);
 
-/* Refers to the UE configuration request and prepares the UE configuration
- * reply.
- *
- * Returns 0 on success, or a negative error code on failure.
+/* Fetches RRC measurement configuration trigger context based on UE rnti.
  */
-int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply);
+struct rrc_m_conf_trigg* rrc_m_conf_get_trigg (uint32_t rnti);
 
-/* Prepares the physical layer related configuration message for UE
- * configuration reply.
- *
- * Returns 0 on success, or a negative error code on failure.
+/* Removes RRC measurement configuration trigger context from tree.
  */
-int emoai_get_ue_phy_conf (UePhyConfig ** phy_conf, mid_t m_id, ueid_t ue_id);
+int rrc_m_conf_rem_trigg (struct rrc_m_conf_trigg* ctxt);
 
-/* Prepares the MAC layer related configuration message for UE configuration
- * reply.
- *
- * Returns 0 on success, or a negative error code on failure.
+/* Insert RRC measurement configuration trigger context into tree.
  */
-int emoai_get_ue_mac_conf (UeMacConfig ** mac_conf, mid_t m_id, ueid_t ue_id);
-
-/* Prepares the RRC layer related configuration message for UE configuration
- * reply.
- *
- * Returns 0 on success, or a negative error code on failure.
- */
-int emoai_get_ue_rrc_conf (UeRrcConfig ** rrc_conf, mid_t m_id, ueid_t ue_id);
-
-/* Refers to the eNB configuration request and prepares the eNB configuration
- * reply.
- *
- * Returns 0 on success, or a negative error code on failure.
- */
-int emoai_eNB_config_reply (EmageMsg * request, EmageMsg ** reply);
-
-/* Prepares the physical layer related configuration message for eNB
- * configuration reply.
- *
- * Returns 0 on success, or a negative error code on failure.
- */
-int emoai_get_cell_phy_conf (CellPhyConfig ** phy_conf,
-							 mid_t m_id,
-							 ccid_t cc_id);
-
-/* Prepares the MAC layer related configuration message for eNB configuration
- * reply.
- *
- * Returns 0 on success, or a negative error code on failure.
- */
-int emoai_get_cell_mac_conf (CellMacConfig ** mac_conf,
-							 mid_t m_id,
-							 ccid_t cc_id);
-
-/* Prepares the RRC layer related configuration message for eNB configuration
- * reply.
- *
- * Returns 0 on success, or a negative error code on failure.
- */
-int emoai_get_cell_rrc_conf (CellRrcConfig ** rrc_conf,
-							 mid_t m_id,
-							 ccid_t cc_id);
+int rrc_m_conf_add_trigg (struct rrc_m_conf_trigg* ctxt);
 
 #endif

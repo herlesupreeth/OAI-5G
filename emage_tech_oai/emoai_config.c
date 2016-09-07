@@ -18,92 +18,100 @@
  */
 
 #include "emoai_config.h"
-#include "emoai_common.h"
 
-int emoai_trigger_ue_config_reply (struct ue_conf_params * p) {
+/* Holds the transaction id of UEs ID report trigger request.
+ * If negative, trigger is not enabled, else holds transaction id of request.
+ * At any point in time, only one trigger of type UEs ID report can exist.
+*/
+int ues_id_trigg_tid = -1;
+
+/* RB Tree holding all request parameters related to RRC measurements
+ * configuration trigger.
+ */
+RB_HEAD(rrc_m_conf_trigg_tree, rrc_m_conf_trigg)
+						rrc_m_conf_t_head = RB_INITIALIZER(&rrc_m_conf_t_head);
+
+RB_PROTOTYPE(
+	rrc_m_conf_trigg_tree,
+	rrc_m_conf_trigg,
+	rrc_m_c_t,
+	rrc_m_conf_comp_trigg);
+
+/* Generate the tree. */
+RB_GENERATE(
+	rrc_m_conf_trigg_tree,
+	rrc_m_conf_trigg,
+	rrc_m_c_t,
+	rrc_m_conf_comp_trigg);
+
+int emoai_trig_UEs_ID_report (void) {
+
+	if (ues_id_trigg_tid < 0) {
+		/* Trigger does not exist so drop the report. */
+		return 0;
+	}
+
+	/* Check here whether trigger is registered in agent and then proceed.
+	 * If the trigger is not enabled or deleted in agent.
+	 * set the ues_id_trigg_tid to -1.
+	 */
+
+
 	/* Reply message. */
-	EmageMsg * reply;
+	EmageMsg *reply;
 
 	/* Initialize the request message. */
 	EmageMsg * request = (EmageMsg *) malloc(sizeof(EmageMsg));
-	if(request == NULL)
-		goto error;
 	emage_msg__init(request);
 
 	Header *header;
-	/* Initialize header message.
-	 * t_id: is set to zero since its a triggered message from wrapper.
-	 * seq: is currently set to zero but will be updated by the agent.
-	*/
+	/* Initialize header message. */
+	/* seq field of header is updated in agent. */
 	if (emoai_create_header(
-			p->b_id,
-			p->m_id,
+			emoai_get_b_id(),
 			0,
-			0,
-			MSG_TYPE__CONF_REQ,
+			ues_id_trigg_tid,
 			&header) != 0)
 		goto error;
 
-	/* Initialize the configuration message. */
-	Configs *conf_req = (Configs *) malloc(sizeof(Configs));
-	if (conf_req == NULL)
-		goto error;
-	configs__init(conf_req);
-
-	/* Filling the configuration message. */
-	conf_req->type = CONFIG_MSG_TYPE__UE_CONF_REQUEST;
-	conf_req->has_type = 1;
-	conf_req->config_msg_case = CONFIGS__CONFIG_MSG_UE_CONF_REQ;
-
-	/*
-	 * Request message for UEs configuration.
-	 */
-	UeConfigRequest *ue_conf_req;
-	ue_conf_req = (UeConfigRequest *) malloc(sizeof(UeConfigRequest));
-	if (ue_conf_req == NULL)
-		goto error;
-	ue_config_request__init(ue_conf_req);
-
-	ue_conf_req->has_layer = 1;
-	ue_conf_req->layer = LAYER_CONFIG__LC_ALL;
-	ue_conf_req->n_rnti = 1;
-	ue_conf_req->rnti = (uint32_t *) malloc(1 * sizeof(uint32_t));
-	ue_conf_req->rnti[0] = p->rnti;
-
-	conf_req->ue_conf_req = ue_conf_req;
 	request->head = header;
-	request->message_case = EMAGE_MSG__MESSAGE_M_CONFS;
-	request->mconfs = conf_req;
+	request->event_types_case = EMAGE_MSG__EVENT_TYPES_TE;
 
-	if (emoai_ue_config_reply(request, &reply) < 0)
+	TriggerEvent *te = malloc(sizeof(TriggerEvent));
+	trigger_event__init(te);
+
+	/* Fill the trigger event message. */
+	te->events_case = TRIGGER_EVENT__EVENTS_M_UES_ID;
+	/* Form the UEs id message. */
+	UesId *mues_id = malloc(sizeof(UesId));
+	ues_id__init(mues_id);
+
+	mues_id->ues_id_m_case = UES_ID__UES_ID_M_REQ;
+	/* Form the UEs id request message. */
+	UesIdReq *req = malloc(sizeof(UesIdReq));
+	ues_id_req__init(req);
+
+	mues_id->req = req;
+	te->mues_id = mues_id;
+	request->te = te;
+
+	if (emoai_UEs_ID_report (request, &reply) < 0) {
 		goto error;
+	}
 
 	emage_msg__free_unpacked(request, 0);
 
-	if (em_send(p->b_id, reply) < 0)
-		goto error;
+	/* Here call the function to send the triggered event reply. */
 
 	return 0;
 
 	error:
-		EMLOG("Error triggering UE configuration reply message!");
-		emage_msg__free_unpacked(request, 0);
+		EMLOG("Error triggering UEs Id report message!");
 		return -1;
 }
 
-int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
+int emoai_UEs_ID_report (EmageMsg * request, EmageMsg ** reply) {
 
-	// m_id a OAI specific identifier.
-	mid_t m_id = request->head->m_id;
-	UeConfigRequest *conf_req = request->mconfs->ue_conf_req;
-	LayerConfig layer;
-
-	/* Parameters required to form the config reply. */
-	uint32_t *ue_RNTIs = NULL;
-	uint32_t n_ue_RNTIs = 0;
-
-	/* For loop variables. */
-	int ue_id;
 	int i;
 
 	Header *header;
@@ -111,783 +119,741 @@ int emoai_ue_config_reply (EmageMsg * request, EmageMsg ** reply) {
 	/* Assign the same transaction id as the request message. */
 	if (emoai_create_header(
 			request->head->b_id,
-			m_id,
 			request->head->seq,
 			request->head->t_id,
-			MSG_TYPE__CONF_REP,
 			&header) != 0)
 		goto error;
 
-	/* Initialize the configuration message. */
-	Configs *conf_reply = (Configs *) malloc(sizeof(Configs));
-	if (conf_reply == NULL)
-		goto error;
-	configs__init(conf_reply);
+	/* Form the main Emage message here. */
+	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
+	emage_msg__init(*reply);
+	(*reply)->head = header;
+	/* Assign event type same as request message. */
+	(*reply)->event_types_case = request->event_types_case;
 
-	/* Filling the configuration message. */
-	conf_reply->type = CONFIG_MSG_TYPE__UE_CONF_REPLY;
-	conf_reply->has_type = 1;
-	conf_reply->config_msg_case = CONFIGS__CONFIG_MSG_UE_CONF_REPL;
+	/* Form the UEs id message. */
+	UesId *mues_id = (UesId *) malloc(sizeof(UesId));
+	ues_id__init(mues_id);
 
-	/* Find out the layers for which configuration was requested. */
-	if (!conf_req->has_layer) {
-		layer = LAYER_CONFIG__LC_ALL;
-	} else {
-		layer = conf_req->layer;
+	mues_id->ues_id_m_case = UES_ID__UES_ID_M_REPL;
+
+	/* Form the UEs id reply message. */
+	UesIdRepl *repl = (UesIdRepl *) malloc(sizeof(UesIdRepl));
+	ues_id_repl__init(repl);
+
+	size_t n_active_rnti = 0;
+	size_t n_inactive_rnti = 0;
+	uint32_t *active_rnti = NULL;
+	uint32_t *inactive_rnti = NULL;
+
+	for (i = 0; i < emoai_get_num_ues(); i++) {
+		if (emoai_get_ue_state(i) > RRC_STATE__RS_RRC_INACTIVE) {
+			++n_active_rnti;
+			active_rnti = (uint32_t *) realloc(active_rnti, n_active_rnti *
+															sizeof(uint32_t));
+			active_rnti[n_active_rnti - 1] = emoai_get_ue_crnti(i);
+		} else {
+			++n_inactive_rnti;
+			inactive_rnti = (uint32_t *) realloc(inactive_rnti,
+											n_inactive_rnti * sizeof(uint32_t));
+			inactive_rnti[n_inactive_rnti - 1] = emoai_get_ue_crnti(i);
+		}
 	}
 
-	/*
-	 * Find out if list of UE RNTIs were provided or not. If not, get all the
-	 * UEs RNTIs in system.
-	 */
-	if (conf_req->n_rnti > 0){
-		/*
-		 * Filter the UEs based on whether the UEs are still registered in \
-		 * system or not.
+	/* Successful outcome of request. */
+	repl->status = CONF_REQ_STATUS__CREQS_SUCCESS;
+	repl->n_active_rnti = n_active_rnti;
+	repl->active_rnti = active_rnti;
+	repl->n_inactive_rnti = n_inactive_rnti;
+	repl->inactive_rnti = inactive_rnti;
+
+	/* Attach the UEs id reply message to the main UEs Id message. */
+	mues_id->repl = repl;
+
+	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_TE) {
+		/* Its a triggered event reply. */
+		TriggerEvent *te = malloc(sizeof(TriggerEvent));
+		trigger_event__init(te);
+
+		/* Update the transaction id which tells us whether trigger is active
+		 * or not.
 		*/
-		ue_RNTIs = malloc(sizeof(uint32_t));
-		for (ue_id = 0; ue_id < conf_req->n_rnti; ue_id++) {
-			/*
-			 * Find array index corresponding to RNTI of UE.
-			 * Returns -1 if the OAI system does not have that UE RNTI.
-			*/
-			if (!(find_UE_id(m_id, conf_req->rnti[ue_id]) < 0)) {
-				++n_ue_RNTIs;
-				ue_RNTIs = realloc(ue_RNTIs, n_ue_RNTIs);
-				ue_RNTIs[n_ue_RNTIs - 1] = conf_req->rnti[ue_id];
-			}
-		}
+		ues_id_trigg_tid = request->head->t_id;
+
+		/* Fill the trigger event message. */
+		te->events_case = TRIGGER_EVENT__EVENTS_M_UES_ID;
+		te->mues_id = mues_id;
+		(*reply)->te = te;
+	} else if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SCHE) {
+		/* Its a scheduled event reply. */
+		ScheduleEvent *sche = malloc(sizeof(ScheduleEvent));
+		schedule_event__init(sche);
+
+		/* Fill the schedule event message. */
+		sche->events_case = SCHEDULE_EVENT__EVENTS_M_UES_ID;
+		sche->mues_id = mues_id;
+		(*reply)->sche = sche;
+	} else if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SE) {
+		/* Its a single event reply. */
+		SingleEvent *se = malloc(sizeof(SingleEvent));
+		single_event__init(se);
+
+		/* Fill the single event message. */
+		se->events_case = SINGLE_EVENT__EVENTS_M_UES_ID;
+		se->mues_id = mues_id;
+		(*reply)->se = se;
 	} else {
-		/* Fill in the number of UEs in system and its RNTIs. */
-		n_ue_RNTIs = emoai_get_num_ues(m_id);
-		ue_RNTIs = malloc(n_ue_RNTIs * sizeof(uint32_t));
-		for (ue_id = 0; ue_id < n_ue_RNTIs; ue_id++) {
-			ue_RNTIs[ue_id] = emoai_get_ue_crnti(m_id, ue_id);
-		}
+		goto error;
 	}
 
-	/* UE configuration reply message. */
-	UeConfigReply *ue_conf_repl = malloc(sizeof(UeConfigReply));
-	if (ue_conf_repl == NULL)
+	return 0;
+
+	error:
+		EMLOG("Error forming UEs Id report message!");
+		return -1;
+}
+
+int emoai_trig_RRC_meas_conf_report (rnti_t * rnti) {
+
+/****** LOCK ******************************************************************/
+	pthread_spin_lock(&rrc_m_conf_t_lock);
+
+	struct rrc_m_conf_trigg *ctxt;
+	ctxt = rrc_m_conf_get_trigg(*rnti);
+
+	pthread_spin_unlock(&rrc_m_conf_t_lock);
+/****** UNLOCK ****************************************************************/
+
+	if (ctxt == NULL) {
+		/* Trigger is not enabled for this UE. */
+		return 0;
+	}
+
+	/* Check here whether trigger is registered in agent and then proceed.
+	 * If the trigger is not enabled remove the trigger context.
+	*/
+
+	/* Reply message. */
+	EmageMsg *reply;
+
+	/* Initialize the request message. */
+	EmageMsg * request = (EmageMsg *) malloc(sizeof(EmageMsg));
+	emage_msg__init(request);
+
+	Header *header;
+	/* Initialize header message. */
+	/* seq field of header is updated in agent. */
+	if (emoai_create_header(
+			emoai_get_b_id(),
+			0,
+			// ctxt->t_id,
+			0,
+			&header) != 0)
 		goto error;
-	/* Initialize the UE configuration reply message. */
-	ue_config_reply__init(ue_conf_repl);
-	ue_conf_repl->n_ue_conf = n_ue_RNTIs;
 
-	/* Filling the UE configuration. */
-	UeConfig **ue_conf = NULL;
+	request->head = header;
+	request->event_types_case = EMAGE_MSG__EVENT_TYPES_TE;
 
-	if (n_ue_RNTIs > 0) {
-		ue_conf = malloc(sizeof(UeConfig *) * n_ue_RNTIs);
-		if (ue_conf == NULL)
+	TriggerEvent *te = malloc(sizeof(TriggerEvent));
+	trigger_event__init(te);
+
+	/* Fill the trigger event message. */
+	te->events_case = TRIGGER_EVENT__EVENTS_M_UE_RRC_MEAS_CONF;
+	/* Form the UE RRC measurement configuration message. */
+	UeRrcMeasConf *mue_rrc_meas_conf = malloc(sizeof(UeRrcMeasConf));
+	ue_rrc_meas_conf__init(mue_rrc_meas_conf);
+
+	mue_rrc_meas_conf->ue_rrc_meas_conf_m_case =
+									UE_RRC_MEAS_CONF__UE_RRC_MEAS_CONF_M_REQ;
+
+	/* Form the UE RRC measurement configuration request message. */
+	UeRrcMeasConfReq *req = malloc(sizeof(UeRrcMeasConfReq));
+	ue_rrc_meas_conf_req__init(req);
+	/* Set the RNTI of the UE. */
+	req->rnti = *rnti;
+
+	mue_rrc_meas_conf->req = req;
+	te->mue_rrc_meas_conf = mue_rrc_meas_conf;
+	request->te = te;
+
+	if (emoai_RRC_meas_conf_report (request, &reply) < 0) {
+		goto error;
+	}
+
+	emage_msg__free_unpacked(request, 0);
+
+	/* Here call the function to send the triggered event reply. */
+
+	return 0;
+
+	error:
+		EMLOG("Error triggering RRC measurement configuration message!");
+		return -1;
+}
+
+int emoai_form_EUTRA_meas_obj (MeasObjectEUTRA_t m_obj, MeasObjEUTRA ** m) {
+	int i;
+
+	*m = malloc(sizeof(MeasObjEUTRA));
+	meas_obj__eutra__init(*m);
+	/* Fill the carrier frequency at which measurement to be performed. */
+	(*m)->has_carrier_freq = 1;
+	(*m)->carrier_freq = m_obj.carrierFreq;
+	/* Fill in the allowed bandwidth for the measurement. */
+	(*m)->has_meas_bw = 1;
+	(*m)->meas_bw = m_obj.allowedMeasBandwidth;
+	/* Fill the cells for which measurements must be fetched. */
+	if (m_obj.cellsToAddModList != NULL) {
+		size_t n_cells = m_obj.cellsToAddModList->list.count;
+		CellsToMeasure **cells = malloc(n_cells * sizeof(CellsToMeasure *));
+
+		for (i = 0; i < n_cells; i++) {
+			cells[i] = malloc(sizeof(CellsToMeasure));
+			cells_to_measure__init(cells[i]);
+			/* Fill the physical cell id. */
+			cells[i]->has_phy_cell_id = 1;
+			cells[i]->phy_cell_id = m_obj.cellsToAddModList->
+													list.array[i]->physCellId;
+			/* Fill the cell offset range. */
+			cells[i]->has_offset_range = 1;
+			cells[i]->offset_range =  m_obj.cellsToAddModList->
+											list.array[i]->cellIndividualOffset;
+
+		}
+		(*m)->n_cells = n_cells;
+		(*m)->cells = cells;
+	}
+	/* Fill the blacklisted cells for which measurements must not be fetched. */
+	if (m_obj.blackCellsToAddModList != NULL) {
+		size_t n_bkl_cells = m_obj.blackCellsToAddModList->list.count;
+		BlacklistCells **bkl_cells =
+								malloc(n_bkl_cells * sizeof(BlacklistCells *));
+
+		for (i = 0; i < n_bkl_cells; i++) {
+			bkl_cells[i] = malloc(sizeof(BlacklistCells));
+			blacklist_cells__init(bkl_cells[i]);
+			/* Fill the starting PCI value. */
+			bkl_cells[i]->has_start_pci = 1;
+			bkl_cells[i]->start_pci = m_obj.blackCellsToAddModList->
+										list.array[i]->physCellIdRange.start;
+			/* Fill in the range of PCI to blacklist. */
+			bkl_cells[i]->has_range = 1;
+			bkl_cells[i]->range = *m_obj.blackCellsToAddModList->
+										list.array[i]->physCellIdRange.range;
+		}
+		(*m)->n_bkl_cells = n_bkl_cells;
+		(*m)->bkl_cells = bkl_cells;
+	}
+
+	return 0;
+}
+
+int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA ** r) {
+
+	*r = malloc(sizeof(RepConfEUTRA));
+	rep_conf__eutra__init(*r);
+
+	/* Fill the hysteresis value. */
+	(*r)->has_hysteresis = 1;
+	(*r)->hysteresis = r_c.triggerType.choice.event.hysteresis;
+	/* Fill the time to trigger value. */
+	(*r)->has_trigg_time = 1;
+	(*r)->trigg_time = r_c.triggerType.choice.event.timeToTrigger;
+	/* Fill the quantity based on which to trigger. */
+	(*r)->has_trigg_quant = 1;
+	(*r)->trigg_quant = r_c.triggerQuantity;
+	/* Fill the quantity to be reported. */
+	(*r)->has_report_quant = 1;
+	(*r)->report_quant = r_c.reportQuantity;
+	/* Fill the max number of cell's measurements to be reported. */
+	(*r)->has_max_rep_cells = 1;
+	(*r)->max_rep_cells = r_c.maxReportCells;
+	/* Fill the report interval between consecutive reporting. */
+	(*r)->has_rep_interval = 1;
+	(*r)->rep_interval = r_c.reportInterval;
+	/* Fill the amount of reports to send. */
+	(*r)->has_rep_amount = 1;
+	(*r)->rep_amount = r_c.reportAmount;
+
+	if (r_c.ext1 != NULL && r_c.ext1->ue_RxTxTimeDiffPeriodical_r9) {
+		/* Fill whether to report UE Tx Rx time difference. */
+		(*r)->has_ue_rxtx_time_diff = 1;
+		(*r)->ue_rxtx_time_diff = *r_c.ext1->ue_RxTxTimeDiffPeriodical_r9;
+	}
+
+	if (r_c.triggerType.present ==
+								ReportConfigEUTRA__triggerType_PR_periodical) {
+		/* Periodical measurement event. */
+		(*r)->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_PERIDICAL;
+		RepConfPer *peridical = malloc(sizeof(RepConfPer));
+		rep_conf_per__init(peridical);
+		/* Fill the purpose of periodical measurements. */
+		peridical->has_purpose = 1;
+		peridical->purpose = r_c.triggerType.choice.periodical.purpose;
+		(*r)->peridical = peridical;
+	} else if (r_c.triggerType.present ==
+									ReportConfigEUTRA__triggerType_PR_event) {
+		/* List of event type measurements. */
+		switch (r_c.triggerType.choice.event.eventId.present) {
+		/* A1 event. */
+		case ReportConfigEUTRA__triggerType__event__eventId_PR_eventA1:
+			/* Set A1 as event type. */
+			(*r)->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A1;
+			RepConfA1 *a1 =  malloc(sizeof(RepConfA1));
+			rep_conf_a1__init(a1);
+
+			struct ReportConfigEUTRA__triggerType__event__eventId__eventA1 *eA1;
+			eA1 = &r_c.triggerType.choice.event.eventId.choice.eventA1;
+
+			/* Fill the threshold parameter for triggering A1 event. */
+			ThresholdEUTRA *a1_threshold = malloc(sizeof(ThresholdEUTRA));
+			threshold__eutra__init(a1_threshold);
+			if (eA1->a1_Threshold.present == ThresholdEUTRA_PR_threshold_RSRP) {
+				/* RSRP is the parameter used for triggering. */
+				a1_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
+				a1_threshold->rsrp = eA1->a1_Threshold.choice.threshold_RSRP;
+			} else {
+				/* RSRQ is the parameter used for triggering. */
+				a1_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRQ;
+				a1_threshold->rsrq = eA1->a1_Threshold.choice.threshold_RSRQ;
+			}
+			a1->a1_threshold = a1_threshold;
+			(*r)->a1 = a1;
+			break;
+		/* A2 event. */
+		case ReportConfigEUTRA__triggerType__event__eventId_PR_eventA2:
+			/* Set A2 as event type. */
+			(*r)->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A2;
+			RepConfA2 *a2 =  malloc(sizeof(RepConfA2));
+			rep_conf_a2__init(a2);
+
+			struct ReportConfigEUTRA__triggerType__event__eventId__eventA2 *eA2;
+			eA2 = &r_c.triggerType.choice.event.eventId.choice.eventA2;
+
+			/* Fill the threshold parameter for triggering A2 event. */
+			ThresholdEUTRA *a2_threshold = malloc(sizeof(ThresholdEUTRA));
+			threshold__eutra__init(a2_threshold);
+			if (eA2->a2_Threshold.present == ThresholdEUTRA_PR_threshold_RSRP) {
+				/* RSRP is the parameter used for triggering. */
+				a2_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
+				a2_threshold->rsrp = eA2->a2_Threshold.choice.threshold_RSRP;
+			} else {
+				/* RSRQ is the parameter used for triggering. */
+				a2_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRQ;
+				a2_threshold->rsrq = eA2->a2_Threshold.choice.threshold_RSRQ;
+			}
+			a2->a2_threshold = a2_threshold;
+			(*r)->a2 = a2;
+			break;
+		/* A3 event. */
+		case ReportConfigEUTRA__triggerType__event__eventId_PR_eventA3:
+			/* Set A3 as event type. */
+			(*r)->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A3;
+			RepConfA3 *a3 =  malloc(sizeof(RepConfA3));
+			rep_conf_a3__init(a3);
+
+			struct ReportConfigEUTRA__triggerType__event__eventId__eventA3 *eA3;
+			eA3 = &r_c.triggerType.choice.event.eventId.choice.eventA3;
+
+			/* Fill the offset parameter for triggering A3 event. */
+			a3->has_a3_offset = 1;
+			a3->a3_offset = eA3->a3_Offset;
+			/* Fill flag for reporting when leave condition of event is met. */
+			a3->has_report_on_leave = 1;
+			a3->report_on_leave = eA3->reportOnLeave;
+			(*r)->a3 = a3;
+			break;
+		/* A4 event. */
+		case ReportConfigEUTRA__triggerType__event__eventId_PR_eventA4:
+			/* Set A4 as event type. */
+			(*r)->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A4;
+			RepConfA4 *a4 =  malloc(sizeof(RepConfA4));
+			rep_conf_a4__init(a4);
+
+			struct ReportConfigEUTRA__triggerType__event__eventId__eventA4 *eA4;
+			eA4 = &r_c.triggerType.choice.event.eventId.choice.eventA4;
+
+			/* Fill the threshold parameter for triggering A4 event. */
+			ThresholdEUTRA *a4_threshold = malloc(sizeof(ThresholdEUTRA));
+			threshold__eutra__init(a4_threshold);
+			if (eA4->a4_Threshold.present == ThresholdEUTRA_PR_threshold_RSRP) {
+				/* RSRP is the parameter used for triggering. */
+				a4_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
+				a4_threshold->rsrp = eA4->a4_Threshold.choice.threshold_RSRP;
+			} else {
+				/* RSRQ is the parameter used for triggering. */
+				a4_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRQ;
+				a4_threshold->rsrq = eA4->a4_Threshold.choice.threshold_RSRQ;
+			}
+			a4->a4_threshold = a4_threshold;
+			(*r)->a4 = a4;
+			break;
+		/* A5 event. */
+		case ReportConfigEUTRA__triggerType__event__eventId_PR_eventA5:
+			/* Set A5 as event type. */
+			(*r)->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A5;
+			RepConfA5 *a5 =  malloc(sizeof(RepConfA5));
+			rep_conf_a5__init(a5);
+
+			struct ReportConfigEUTRA__triggerType__event__eventId__eventA5 *eA5;
+			eA5 = &r_c.triggerType.choice.event.eventId.choice.eventA5;
+
+			/* Fill the threshold 1 parameter for triggering A4 event. */
+			ThresholdEUTRA *a5_threshold1 = malloc(sizeof(ThresholdEUTRA));
+			threshold__eutra__init(a5_threshold1);
+			if (eA5->a5_Threshold1.present ==
+											ThresholdEUTRA_PR_threshold_RSRP) {
+				/* RSRP is the parameter used for triggering. */
+				a5_threshold1->threshold_case =
+											THRESHOLD__EUTRA__THRESHOLD_RSRP;
+				a5_threshold1->rsrp = eA5->a5_Threshold1.choice.threshold_RSRP;
+			} else {
+				/* RSRQ is the parameter used for triggering. */
+				a5_threshold1->threshold_case =
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ;
+				a5_threshold1->rsrq = eA5->a5_Threshold1.choice.threshold_RSRQ;
+			}
+
+			/* Fill the threshold 2 parameter for triggering A4 event. */
+			ThresholdEUTRA *a5_threshold2 = malloc(sizeof(ThresholdEUTRA));
+			threshold__eutra__init(a5_threshold2);
+			if (eA5->a5_Threshold2.present ==
+											ThresholdEUTRA_PR_threshold_RSRP) {
+				/* RSRP is the parameter used for triggering. */
+				a5_threshold2->threshold_case =
+											THRESHOLD__EUTRA__THRESHOLD_RSRP;
+				a5_threshold2->rsrp = eA5->a5_Threshold2.choice.threshold_RSRP;
+			} else {
+				/* RSRQ is the parameter used for triggering. */
+				a5_threshold2->threshold_case =
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ;
+				a5_threshold2->rsrq = eA5->a5_Threshold2.choice.threshold_RSRQ;
+			}
+			a5->a5_threshold1 = a5_threshold1;
+			a5->a5_threshold2 = a5_threshold2;
+			(*r)->a5 = a5;
+			break;
+		default:
 			goto error;
-	}
-
-	for (i = 0; i < n_ue_RNTIs; i++) {
-		/*
-		 * Find array index corresponding to RNTI of UE.
-		 * Returns -1 if the OAI system does not have that UE RNTI.
-		*/
-		ue_id = find_UE_id(m_id, ue_RNTIs[i]);
-		/* Filling the UE configuration for each UE. */
-		ue_conf[i] = (UeConfig *) malloc(sizeof(UeConfig));
-		ue_config__init(ue_conf[i]);
-		/* Set the RNTI of the UE. */
-		ue_conf[i]->rnti = ue_RNTIs[i];
-		ue_conf[i]->has_rnti = 1;
-		ue_conf[i]->has_state = 1;
-		ue_conf[i]->state = emoai_get_ue_state(m_id, ue_id);
-
-		if (ue_conf[i]->state > UE_STATE__UES_RRC_INACTIVE) {
-			/* Check flag for PHY layer configuration. */
-			if ((layer & LAYER_CONFIG__LC_ALL)
-											|| (layer & LAYER_CONFIG__LC_PHY)) {
-				/* Add Physical layer related configuration to the UE conf. */
-				if (emoai_get_ue_phy_conf (&ue_conf[i]->phy_conf,
-										   m_id,
-										   ue_id) < 0) {
-					goto error;
-				}
-			}
-
-			/* Check flag for MAC layer configuration. */
-			if ((layer & LAYER_CONFIG__LC_ALL)
-											|| (layer & LAYER_CONFIG__LC_MAC)) {
-				/* Add MAC layer related configuration to the UE conf. */
-				if (emoai_get_ue_mac_conf (&ue_conf[i]->mac_conf,
-										   m_id,
-										   ue_id) < 0) {
-					goto error;
-				}
-			}
-
-			/* Check flag for RRC layer configuration. */
-			if ((layer & LAYER_CONFIG__LC_ALL)
-											|| (layer & LAYER_CONFIG__LC_RRC)) {
-				/* Add RRC layer related configuration to the UE conf. */
-				if (emoai_get_ue_rrc_conf (&ue_conf[i]->rrc_conf,
-										   m_id,
-										   ue_id) < 0) {
-					goto error;
-				}
-			}
+			break;
 		}
+	} else {
+		goto error;
 	}
-	/* Add the UE configuration of all the UEs to final UE config report. */
-	ue_conf_repl->ue_conf = ue_conf;
-	/* Add the collective UE configuration report to configuration reply. */
-	conf_reply->ue_conf_repl = ue_conf_repl;
+
+	return 0;
+
+	error:
+		EMLOG("Error forming EUTRA report configuration object message!");
+		return -1;
+}
+
+int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply) {
+
+	int i;
+	uint32_t ue_id;
+	struct rrc_m_conf_trigg *ctxt = NULL;
+	ConfReqStatus req_status = CONF_REQ_STATUS__CREQS_SUCCESS;
+
+	UeRrcMeasConfReq *req;
+
+	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_TE) {
+		/* Its a triggered event request. */
+		req = request->te->mue_rrc_meas_conf->req;
+		/****** LOCK **********************************************************/
+		pthread_spin_lock(&rrc_m_conf_t_lock);
+
+		ctxt = rrc_m_conf_get_trigg(req->rnti);
+
+		pthread_spin_unlock(&rrc_m_conf_t_lock);
+		/****** UNLOCK ********************************************************/
+
+	} else if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SCHE) {
+		/* Its a scheduled event request. */
+		req = request->sche->mue_rrc_meas_conf->req;
+	} else if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SE) {
+		/* Its a single event request. */
+		req = request->se->mue_rrc_meas_conf->req;
+	} else {
+		goto error;
+	}
+
+	/* Check if UE is still active in the system. */
+	ue_id = find_UE_id(DEFAULT_ENB_ID, req->rnti);
+	if (ue_id < 0) {
+		if (ctxt != NULL) {
+			/* UE no longer exists so remove its trigger. */
+			rrc_m_conf_rem_trigg(ctxt);
+		}
+		/* Failed outcome of request. */
+		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		goto error;
+	}
+
+	Header *header;
+	/* Initialize header message. */
+	/* Assign the same transaction id as the request message. */
+	if (emoai_create_header(
+			request->head->b_id,
+			request->head->seq,
+			request->head->t_id,
+			&header) != 0)
+		goto error;
 
 	/* Form the main Emage message here. */
 	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
-	if(*reply == NULL)
-		goto error;
 	emage_msg__init(*reply);
 	(*reply)->head = header;
-	(*reply)->message_case = EMAGE_MSG__MESSAGE_M_CONFS;
-	(*reply)->mconfs = conf_reply;
+	/* Assign event type same as request message. */
+	(*reply)->event_types_case = request->event_types_case;
 
-	if (n_ue_RNTIs > 0) {
-		free(ue_RNTIs);
-	}
+	/* Form the UE RRC measurement configuration message. */
+	UeRrcMeasConf *mue_rrc_meas_conf = malloc(sizeof(UeRrcMeasConf));
+	ue_rrc_meas_conf__init(mue_rrc_meas_conf);
 
-	return 0;
+	mue_rrc_meas_conf->ue_rrc_meas_conf_m_case =
+									UE_RRC_MEAS_CONF__UE_RRC_MEAS_CONF_M_REPL;
 
-	error:
-		EMLOG("Error forming UE configuration reply message!");
-		if (n_ue_RNTIs > 0) {
-			free(ue_RNTIs);
-		}
-		return -1;
-}
+	/* Form the UE RRC measurement configuration reply message. */
+	UeRrcMeasConfRepl *repl = malloc(sizeof(UeRrcMeasConfRepl));
+	ue_rrc_meas_conf_repl__init(repl);
 
-int emoai_get_ue_phy_conf (UePhyConfig ** phy_conf, mid_t m_id, ueid_t ue_id) {
-	/*
-	 * Fill in the PHY configuration for the UE.
-	*/
-	*phy_conf = (UePhyConfig *) malloc(sizeof(UePhyConfig));
-	UePhyConfig *conf;
-	conf = *phy_conf;
-	if (conf == NULL)
-		goto error;
-	ue_phy_config__init(conf);
-
-	/* Set the SR configuration. But info is not available. */
-
-	/* Set UE transmission antenna. */
-	if(emoai_get_ue_trx_antenna(m_id, ue_id) >= 0 &&
-							emoai_get_ue_trx_antenna(m_id, ue_id) < 8){
-		conf->has_ue_trx_antenna = 1;
-		conf->ue_trx_antenna = emoai_get_ue_trx_antenna(m_id, ue_id);
-	}
-	/* Set the transmission mode. */
-	if(emoai_get_ue_trx_mode(m_id, ue_id) >= 0 &&
-							emoai_get_ue_trx_mode(m_id, ue_id) < 3){
-		conf->transmission_mode = emoai_get_ue_trx_mode(m_id, ue_id);
-		conf->has_transmission_mode = 1;
-	}
-
-	return 0;
-
-	error:
-		EMDBG("Error getting UE PHY configuration!");
-		return -1;
-}
-
-int emoai_get_ue_mac_conf (UeMacConfig ** mac_conf, mid_t m_id, ueid_t ue_id) {
-	/*
-	 * Fill in the MAC configuration for the UE.
-	*/
-	*mac_conf = (UeMacConfig *) malloc(sizeof(UeMacConfig));
-	UeMacConfig *conf;
-	conf = *mac_conf;
-	if (conf == NULL)
-		goto error;
-	ue_mac_config__init(conf);
-
-	/* Set the time_alignment_timer. */
-	if(emoai_get_time_alignment_timer(m_id, ue_id) != -1){
-		conf->time_alignment_timer =
-									emoai_get_time_alignment_timer(m_id, ue_id);
-		conf->has_time_alignment_timer = 1;
-	}
-	/* Set tti bundling flag (Refer ts 36.321). */
-	if(emoai_get_tti_bundling(m_id, ue_id) != -1){
-		conf->has_tti_bundling = 1;
-		conf->tti_bundling = emoai_get_tti_bundling(m_id, ue_id);
-	}
-	/* Set the max HARQ retransmission for the UL. */
-	if(emoai_get_maxHARQ_TX(m_id, ue_id) != -1){
-		conf->has_max_harq_tx = 1;
-		conf->max_harq_tx = emoai_get_maxHARQ_TX(m_id, ue_id);
-	}
-	/* Set ack_nack_simultaneous_trans (Refer TS 36.213). */
-	if(emoai_get_ack_nack_simult_trans(m_id, ue_id) != -1){
-		conf->has_ack_nack_simultaneous_trans = 1;
-		conf->ack_nack_simultaneous_trans =
-								emoai_get_ack_nack_simult_trans(m_id, ue_id);
-	}
-	/* Set simultaneous_ack_nack_cqi (Refer TS 36.213). */
-	if(emoai_get_simult_ack_nack_cqi(m_id, ue_id) != -1){
-		conf->has_simultaneous_ack_nack_cqi = 1;
-		conf->simultaneous_ack_nack_cqi =
-									emoai_get_simult_ack_nack_cqi(m_id, ue_id);
-	}
-	/* Set type of aperiodic CQI reporting mode. */
-	if(emoai_get_aperiodic_cqi_rep_mode(m_id, ue_id) != -1){
-		conf->has_aper_cqi_rep = 1;
-		int mode = emoai_get_aperiodic_cqi_rep_mode(m_id, ue_id);
-		if (mode > 4) {
-			conf->aper_cqi_rep = APERIODIC_CQI_REPORT_MODE__ACRM_NONE;
-		} else {
-			conf->aper_cqi_rep = mode;
-		}
-	}
-
-	return 0;
-
-	error:
-		EMDBG("Error getting UE MAC configuration!");
-		return -1;
-}
-
-int emoai_get_ue_rrc_conf (UeRrcConfig ** rrc_conf, mid_t m_id, ueid_t ue_id) {
-	/*
-	 * Fill in the RRC configuration for the UE.
-	*/
-	*rrc_conf = (UeRrcConfig *) malloc(sizeof(UeRrcConfig));
-	UeRrcConfig *conf;
-	conf = *rrc_conf;
-	if (conf == NULL)
-		goto error;
-	ue_rrc_config__init(conf);
-
-	/* Set the DRX configuration. But its not supported yet. */
+	/* Fill the RNTI. */
+	repl->rnti = req->rnti;
+	/* Successful outcome of request. */
+	repl->status = req_status;
+	/* Set the RRC state of the UE. */
+	repl->has_ue_rrc_state = 1;
+	repl->ue_rrc_state = emoai_get_ue_state(ue_id);
 
 	/* Set the measurement gap configuration pattern. */
-	if(emoai_get_meas_gap_config(m_id, ue_id) >= 0 &&
-									emoai_get_meas_gap_config(m_id, ue_id) < 3){
-		conf->meas_gap_patt = emoai_get_meas_gap_config(m_id, ue_id);
-		conf->has_meas_gap_patt = 1;
+	MeasGapPattern mg_p = emoai_get_meas_gap_config(ue_id);
+	if (mg_p >= 0 && mg_p < 3){
+		repl->meas_gap_patt = mg_p;
+		repl->has_meas_gap_patt = 1;
 	}
 	/* Set the measurement gap offset if applicable. */
-	if(conf->has_meas_gap_patt == 1 &&
-		conf->meas_gap_patt != MEAS_GAP_PATTERN__MGP_OFF) {
-		conf->meas_gap_config_sf_offset =
-								emoai_get_meas_gap_config_offset(m_id, ue_id);
-		conf->has_meas_gap_config_sf_offset = 1;
+	if (repl->has_meas_gap_patt == 1 &&
+		repl->meas_gap_patt != MEAS_GAP_PATTERN__MGP_OFF) {
+		repl->meas_gap_config_sf_offset =
+								emoai_get_meas_gap_config_offset(ue_id);
+		repl->has_meas_gap_config_sf_offset = 1;
 	}
 
-	/* Set the SPS configuration. But its not supported yet. */
-
-	/* Set the CQI configuration. But info is not available yet. */
-
-	/* Set the aggregated bit-rate of the non-gbr bearer (UL). */
-	conf->ue_aggreg_max_bitrate_ul =
-							emoai_get_ue_aggreg_max_bitrate_ul(m_id, ue_id);
-	conf->has_ue_aggreg_max_bitrate_ul = 1;
-	/* Set the aggregated bit-rate of the non-gbr bearer (DL). */
-	conf->ue_aggreg_max_bitrate_dl =
-							emoai_get_ue_aggreg_max_bitrate_dl(m_id, ue_id);
-	conf->has_ue_aggreg_max_bitrate_dl = 1;
 	/* Set the UE capabilities. */
-	UeCapabilities *capab;
-	capab = malloc(sizeof(UeCapabilities));
-	ue_capabilities__init(capab);
-	/* Set half duplex (FDD operation). */
-	uint32_t* half_dupl = emoai_get_half_duplex(m_id, ue_id);
-	uint32_t num_bands = emoai_get_num_bands(m_id, ue_id);
-	if (half_dupl != NULL) {
-		capab->n_half_duplex = num_bands;
-		capab->half_duplex = half_dupl;
-	}
-	/* Set the EUTRA bands supported by the UE. */
-	uint32_t* bands = emoai_get_bands(m_id, ue_id);
+	UeCapabilities *capabilities;
+	capabilities = malloc(sizeof(UeCapabilities));
+	ue_capabilities__init(capabilities);
+	/* Set the LTE bands supported by UE. */
+	uint32_t num_bands = emoai_get_num_bands(ue_id);
+	uint32_t* bands = emoai_get_bands(ue_id);
 	if (bands != NULL) {
-		capab->n_band = num_bands;
-		capab->band = bands;
+		capabilities->n_band = num_bands;
+		capabilities->band = bands;
 	}
-	/* Set intra-frame hopping flag. */
-	capab->has_intra_sf_hopping = 1;
-	capab->intra_sf_hopping = emoai_get_intra_sf_hopping(m_id, ue_id);
-	/* Set support for type 2 hopping with n_sb > 1. */
-	capab->has_type2_sb_1 = 1;
-	capab->type2_sb_1 = emoai_get_type2_sb_1 (m_id, ue_id);
-	/* Set ue category. */
-	if (emoai_get_ue_category(m_id, ue_id) != -1) {
-		capab->has_ue_category = 1;
-		capab->ue_category = emoai_get_ue_category(m_id, ue_id);
-	}
-	/* Set UE support for resource allocation type 1. */
-	capab->has_res_alloc_type1 = 1;
-	capab->res_alloc_type1 = emoai_get_res_alloc_type1 (m_id, ue_id);
-	/* Set the capabilites to the message. */
-	conf->capabilities = capab;
-	/* Set offset index value for HARQ-ACK. */
-	if(emoai_get_beta_offset_ack_index(m_id, ue_id) != -1){
-		conf->has_beta_offset_ack_index = 1;
-		conf->beta_offset_ack_index =
-								emoai_get_beta_offset_ack_index(m_id, ue_id);
-	}
-	/* Set offset index value for Rank Indication. */
-	if(emoai_get_beta_offset_ri_index(m_id, ue_id) != -1){
-		conf->has_beta_offset_ri_index = 1;
-		conf->beta_offset_ri_index =
-								emoai_get_beta_offset_ri_index(m_id, ue_id);
-	}
-	/* Set offset index value for CQI. */
-	if(emoai_get_beta_offset_cqi_index(m_id, ue_id) != -1){
-		conf->has_beta_offset_cqi_index = 1;
-		conf->beta_offset_cqi_index =
-								emoai_get_beta_offset_cqi_index(m_id, ue_id);
-	}
-	/* Set type of ACK/NACK feedback mode in TDD. */
-	if(emoai_get_tdd_ack_nack_feedback(m_id, ue_id) >= 0 &&
-		emoai_get_tdd_ack_nack_feedback(m_id, ue_id) < 2){
-		conf->has_tdd_ack_nack_feedb = 1;
-		conf->tdd_ack_nack_feedb = emoai_get_tdd_ack_nack_feedback(m_id, ue_id);
-	}
-	/* Set repition factor set for ACK/NACK. */
-	if(emoai_get_ack_nack_repetition_factor(m_id, ue_id) != -1){
-		conf->has_ack_nack_rep_factor = 1;
-		conf->ack_nack_rep_factor =
-							emoai_get_ack_nack_repetition_factor(m_id, ue_id);
-	}
-	/* Set extended BSR size. */
-	if(emoai_get_extended_bsr_size(m_id, ue_id) != -1){
-		conf->has_extended_bsr_size = 1;
-		conf->extended_bsr_size = emoai_get_extended_bsr_size(m_id, ue_id);
-	}
-	/* Set carrier aggregation support (boolean). */
-	conf->has_ca_support = 0;
-	conf->ca_support = 0;
-	if(conf->has_ca_support){
-		/* Set cross carrier scheduling support (boolean). */
-		conf->has_cross_carrier_sched_supp = 1;
-		conf->cross_carrier_sched_supp = 0;
-		/* Set index of primary cell. */
-		conf->has_pcell_cc_id = 1;
-		conf->pcell_cc_id = 0;
-		/*
-		 * Set the secondary cells configuration. But since carrier
-		 * aggregation is not supported yet.
-		 * We do not set scell_conf field.
-		*/
-		/*Set deactivation timer for secondary cell. */
-		conf->has_scell_deactivation_timer = 1;
-		conf->scell_deactivation_timer = 1;
+	if (emoai_get_access_release_vers(ue_id) != -1){
+		capabilities->has_release_3gpp = 1;
+		capabilities->release_3gpp = emoai_get_access_release_vers(ue_id);
 	}
 
-	return 0;
+	repl->capabilities = capabilities;
 
-	error:
-		EMDBG("Error getting UE RRC configuration!");
-		return -1;
-}
+	/* Get the UE context which holds all the measurement configuration info. */
+	struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
 
-int emoai_eNB_config_reply (EmageMsg * request, EmageMsg ** reply) {
+	/* Fill the measurement object configuration. */
+	size_t n_m_obj = 0;
+	MeasObject **m_obj = NULL;
+	for (i = 0; i < MAX_MEAS_OBJ; i++) {
+		if (ue->ue_context.MeasObj[i] == NULL) {
+			continue;
+		}
+		++n_m_obj;
+		m_obj = (MeasObject **) realloc(m_obj, n_m_obj * sizeof(MeasObject *));
 
-	// m_id a OAI specific identifier.
-	mid_t m_id = request->head->m_id;
-	EnbConfigRequest *conf_req = request->mconfs->enb_conf_req;
-	LayerConfig layer;
+		m_obj[n_m_obj - 1] = malloc(sizeof(MeasObject));
+		meas_object__init(m_obj[n_m_obj - 1]);
 
-	/* Parameters required to form the config reply. */
-	uint32_t *CC_IDs = NULL;
-	uint32_t n_CC_IDs = 0;
+		m_obj[n_m_obj - 1]->measobjid = ue->ue_context.MeasObj[i]->
+															measObjectId;
 
-	/* For loop variables. */
-	int cc_id;
-	int i;
-
-	Header *header;
-	/* Initialize header message. */
-	/* Assign the same transaction id as the request message. */
-	if (emoai_create_header(
-			request->head->b_id,
-			m_id,
-			request->head->seq,
-			request->head->t_id,
-			MSG_TYPE__CONF_REP,
-			&header) != 0)
-		goto error;
-
-	/* Initialize the configuration message. */
-	Configs *conf_reply = (Configs *) malloc(sizeof(Configs));
-	if (conf_reply == NULL)
-		goto error;
-	configs__init(conf_reply);
-
-	/* Filling the configuration message. */
-	conf_reply->type = CONFIG_MSG_TYPE__ENB_CONF_REPLY;
-	conf_reply->has_type = 1;
-	conf_reply->config_msg_case = CONFIGS__CONFIG_MSG_ENB_CONF_REPL;
-
-	/* Find out the layers for which configuration was requested. */
-	if (!conf_req->has_layer) {
-		layer = LAYER_CONFIG__LC_ALL;
-	} else {
-		layer = conf_req->layer;
+		if (ue->ue_context.MeasObj[i]->measObject.present ==
+						MeasObjectToAddMod__measObject_PR_measObjectEUTRA) {
+			/* Set the type of Measurement object. */
+			m_obj[n_m_obj - 1]->meas_obj_case =
+									MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA;
+			/* Fill in the EUTRA measurement object. */
+			if (emoai_form_EUTRA_meas_obj(
+					ue->ue_context.MeasObj[i]->measObject.choice.
+							measObjectEUTRA,
+							&(m_obj[n_m_obj - 1]->measobj_eutra)) < 0) {
+				goto error;
+			}
+		} else {
+			/* Only EUTRA measurements are supported now. */
+			goto error;
+		}
 	}
+	repl->n_m_obj = n_m_obj;
+	repl->m_obj = m_obj;
 
-	/*
-	 * Find out if list of CC IDs were provided or not. If not, get all the
-	 * CC IDs in system.
+	/* Fill the report configuration object. */
+	size_t n_r_conf = 0;
+	ReportConfig **r_conf = NULL;
+	for (i = 0; i < MAX_MEAS_CONFIG; i++) {
+		if (ue->ue_context.ReportConfig[i] == NULL) {
+			continue;
+		}
+		++n_r_conf;
+		r_conf = (ReportConfig **) realloc(r_conf, n_r_conf *
+														sizeof(ReportConfig *));
+
+		r_conf[n_r_conf - 1] = malloc(sizeof(ReportConfig));
+		report_config__init(r_conf[n_r_conf - 1]);
+
+		r_conf[n_r_conf - 1]->reportconfid = ue->ue_context.ReportConfig[i]
+														->reportConfigId;
+
+		if (ue->ue_context.ReportConfig[i]->reportConfig.present ==
+				ReportConfigToAddMod__reportConfig_PR_reportConfigEUTRA) {
+			/* Set the type of Report Configuration. */
+			r_conf[n_r_conf - 1]->rep_conf_case =
+										REPORT_CONFIG__REP_CONF_RC__EUTRA;
+			/* Fill in the EUTRA Report Configuration object. */
+			if (emoai_form_EUTRA_rep_conf(
+					ue->ue_context.ReportConfig[i]->reportConfig.choice.
+								reportConfigEUTRA,
+								&(r_conf[n_r_conf - 1]->rc_eutra)) < 0) {
+				goto error;
+			}
+		} else {
+			/* Only EUTRA measurements are supported now. */
+			goto error;
+		}
+	}
+	repl->n_r_conf = n_r_conf;
+	repl->r_conf = r_conf;
+
+	/* Fill the measurement id object. */
+	size_t n_meas_id = 0;
+	MeasIdentifier **meas_id = NULL;
+	for (i=0; i < MAX_MEAS_ID; i++) {
+		if (ue->ue_context.MeasId[i] == NULL) {
+			continue;
+		}
+		++n_meas_id;
+		meas_id = (MeasIdentifier **) realloc(meas_id, n_meas_id *
+													sizeof(MeasIdentifier *));
+
+		meas_id[n_meas_id - 1] = malloc(sizeof(MeasIdentifier));
+		meas_identifier__init(meas_id[n_meas_id - 1]);
+		/* Fill the measurement id. */
+		meas_id[n_meas_id - 1]->id = ue->ue_context.MeasId[i]->measId;
+		/* Fill the measurement object id. */
+		meas_id[n_meas_id - 1]->measobj_id = ue->ue_context.MeasId[i]->
+																measObjectId;
+		/* Fill the report configuration id. */
+		meas_id[n_meas_id - 1]->report_conf_id = ue->ue_context.MeasId[i]->
+																reportConfigId;
+	}
+	repl->n_meas_id = n_meas_id;
+	repl->meas_id = meas_id;
+
+	/* Attach the measurement configuration reply message to
+	 * the main measurement configuration message.
 	 */
-	if (conf_req->n_cc_id > 0){
-		/*
-		 * Filter the CC IDs based on whether the CC ID exists in the
-		 * system or not.
+	mue_rrc_meas_conf->repl = repl;
+
+	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_TE) {
+		/* Its a triggered event reply. */
+		TriggerEvent *te = malloc(sizeof(TriggerEvent));
+		trigger_event__init(te);
+
+		/* Fill the trigger event message. */
+		te->events_case = TRIGGER_EVENT__EVENTS_M_UE_RRC_MEAS_CONF;
+		te->mue_rrc_meas_conf = mue_rrc_meas_conf;
+		(*reply)->te = te;
+
+		/* If trigger context does not exist add the context.
+		 * Check for triggered reply event or request to add trigger from
+		 * controller.
 		*/
-		CC_IDs = malloc(sizeof(uint32_t));
-		for (cc_id = 0; cc_id < conf_req->n_cc_id; cc_id++) {
-			/*
-			 * For now OAI supports only one CC, therefore the value of
-			 * CC ID provided in request must be less than MAX_NUM_CCs.
-			*/
-			if (conf_req->cc_id[cc_id] >= 0 &&
-							conf_req->cc_id[cc_id] < MAX_NUM_CCs) {
-				++n_CC_IDs;
-				CC_IDs = realloc(CC_IDs, n_CC_IDs);
-				CC_IDs[n_CC_IDs -1] = conf_req->cc_id[cc_id];
-			}
+		if (ctxt == NULL) {
+			ctxt = malloc(sizeof(struct rrc_m_conf_trigg));
+			ctxt->t_id = request->head->t_id;
+			ctxt->rnti = req->rnti;
+			rrc_m_conf_add_trigg(ctxt);
 		}
+	} else if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SCHE) {
+		/* Its a scheduled event reply. */
+		ScheduleEvent *sche = malloc(sizeof(ScheduleEvent));
+		schedule_event__init(sche);
+
+		/* Fill the schedule event message. */
+		sche->events_case = SCHEDULE_EVENT__EVENTS_M_UE_RRC_MEAS_CONF;
+		sche->mue_rrc_meas_conf = mue_rrc_meas_conf;
+		(*reply)->sche = sche;
+	} else if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SE) {
+		/* Its a single event reply. */
+		SingleEvent *se = malloc(sizeof(SingleEvent));
+		single_event__init(se);
+
+		/* Fill the single event message. */
+		se->events_case = SINGLE_EVENT__EVENTS_M_UE_RRC_MEAS_CONF;
+		se->mue_rrc_meas_conf = mue_rrc_meas_conf;
+		(*reply)->se = se;
 	} else {
-		/* Fill in the number of CCs in system and its CC ids. */
-		n_CC_IDs = MAX_NUM_CCs;
-		CC_IDs = malloc(n_CC_IDs * sizeof(uint32_t));
-		for (cc_id = 0; cc_id < n_CC_IDs; cc_id++) {
-			CC_IDs[cc_id] = cc_id;
-		}
-	}
-
-	/* eNB configuration reply message. */
-	EnbConfigReply *eNB_conf_repl = malloc(sizeof(EnbConfigReply));
-	if (eNB_conf_repl == NULL)
 		goto error;
-	/* Initialize the eNB configuration reply message. */
-	enb_config_reply__init(eNB_conf_repl);
-	eNB_conf_repl->n_cell_conf = n_CC_IDs;
-
-	/* Filling the eNB configuration. */
-	CellConfig **cell_conf;
-
-	if (n_CC_IDs > 0) {
-		cell_conf = malloc(sizeof(CellConfig *) * n_CC_IDs);
-		if (cell_conf == NULL)
-			goto error;
-	}
-
-	for (i = 0; i < n_CC_IDs; i++) {
-		/* Filling the eNB configuration for each CC ID. */
-		cell_conf[i] = (CellConfig *) malloc(sizeof(CellConfig));
-		cell_config__init(cell_conf[i]);
-		/* Set the CC ID of the cell. */
-		cell_conf[i]->cc_id = CC_IDs[i];
-		cell_conf[i]->has_cc_id = 1;
-
-		/* Check flag for PHY layer configuration. */
-		if ((layer & LAYER_CONFIG__LC_ALL) || (layer & LAYER_CONFIG__LC_PHY)) {
-			/* Add Physical layer related configuration to the Cell conf. */
-			if (emoai_get_cell_phy_conf (&cell_conf[i]->phy_conf,
-										 m_id,
-										 CC_IDs[i]) < 0) {
-				goto error;
-			}
-		}
-
-		/* Check flag for MAC layer configuration. */
-		if ((layer & LAYER_CONFIG__LC_ALL) || (layer & LAYER_CONFIG__LC_MAC)) {
-			/* Add MAC layer related configuration to the Cell conf. */
-			if (emoai_get_cell_mac_conf (&cell_conf[i]->mac_conf,
-										 m_id,
-										 CC_IDs[i]) < 0) {
-				goto error;
-			}
-		}
-
-		/* Check flag for RRC layer configuration. */
-		if ((layer & LAYER_CONFIG__LC_ALL) || (layer & LAYER_CONFIG__LC_RRC)) {
-			/* Add MAC layer related configuration to the Cell conf. */
-			if (emoai_get_cell_rrc_conf (&cell_conf[i]->rrc_conf,
-										 m_id,
-										 CC_IDs[i]) < 0) {
-				goto error;
-			}
-		}
-	}
-	/* Add the configuration of all the Cells to final Cell config report. */
-	eNB_conf_repl->cell_conf = cell_conf;
-	/* Add the collective eNB configuration report to configuration reply. */
-	conf_reply->enb_conf_repl = eNB_conf_repl;
-
-	/* Form the main Emage message here. */
-	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
-	if(*reply == NULL)
-		goto error;
-	emage_msg__init(*reply);
-	(*reply)->head = header;
-	(*reply)->message_case = EMAGE_MSG__MESSAGE_M_CONFS;
-	(*reply)->mconfs = conf_reply;
-
-	if (n_CC_IDs > 0) {
-		free(CC_IDs);
 	}
 
 	return 0;
 
 	error:
-		EMLOG("Error forming eNB configuration reply message!");
-		if (n_CC_IDs > 0) {
-			free(CC_IDs);
-		}
+		EMLOG("Error forming UEs Id reply message!");
 		return -1;
 }
 
-int emoai_get_cell_phy_conf (CellPhyConfig ** phy_conf,
-							 mid_t m_id,
-							 ccid_t cc_id) {
-	int j;
-	/*
-	 * Fill in the PHY configuration for the Cell.
-	*/
-	*phy_conf = (CellPhyConfig *) malloc(sizeof(CellPhyConfig));
-	CellPhyConfig *conf;
-	conf = *phy_conf;
-	if (conf == NULL)
-		goto error;
-	cell_phy_config__init(conf);
+int rrc_m_conf_comp_trigg (
+	struct rrc_m_conf_trigg* t1,
+	struct rrc_m_conf_trigg* t2) {
 
-	/* Set the PCI of this cell. */
-	conf->pci = 0;
-	conf->has_pci = 1;
-	/* Set the PLMN cell id of this cell. */
-	conf->cell_id = emoai_get_cell_id(m_id, cc_id);
-	conf->has_cell_id = 1;
-	/* Set PUSCH resources in RBs for hopping. */
-	conf->pusch_hopp_offset = emoai_get_hopp_offset(m_id, cc_id);
-	conf->has_pusch_hopp_offset = 1;
-	/* Set the type of hopping mode used. */
-	if (emoai_get_hopp_mode(m_id, cc_id) >= 0 &&
-										emoai_get_hopp_mode(m_id, cc_id) < 2) {
-		conf->hopp_mode = emoai_get_hopp_mode(m_id, cc_id);
-		conf->has_hopp_mode = 1;
+	if (t1->t_id > t2->t_id) {
+		return 1;
 	}
-	/* Set the number of subbands. */
-	conf->n_sb = emoai_get_n_SB(m_id, cc_id);
-	conf->has_n_sb = 1;
-	/* Set the number of resource element groups used for PHICH. */
-	if (emoai_get_phich_res(m_id, cc_id) >= 0 &&
-										emoai_get_phich_res(m_id, cc_id) < 4) {
-		conf->phich_res = emoai_get_phich_res(m_id, cc_id);
-		conf->has_phich_res = 1;
-	}
-	/* Set the PHICH duration used. */
-	if (emoai_get_phich_dur(m_id, cc_id) >= 0 &&
-										emoai_get_phich_dur(m_id, cc_id) < 2) {
-		conf->phich_dur = emoai_get_phich_dur(m_id, cc_id);
-		conf->has_phich_dur = 1;
-	}
-	/* Set the number of OFDM symbols possible to use for PDCCH in a subframe.*/
-	// conf->init_nr_pdcch_ofdm_sym = emoai_get_num_pdcch_symb(m_id, cc_id);
-	conf->init_nr_pdcch_ofdm_sym = 1;
-	conf->has_init_nr_pdcch_ofdm_sym = 1;
-	/* Fill the configuration used for System Information messages. */
-	SiInfoConfig *si_config;
-	si_config = malloc(sizeof(SiInfoConfig));
-	if(si_config == NULL)
-		goto error;
-	si_info_config__init(si_config);
-	/* Set the frame number to apply the SI configuration. */
-	si_config->sfn = 1;
-	si_config->has_sfn = 1;
-	/* Set the length of SIB1 in bytes. */
-	si_config->sib1_len = emoai_get_sib1_len(m_id, cc_id);
-	si_config->has_sib1_len = 1;
-	/* Set the scheduling window for all SIs in subframes. */
-	si_config->si_window_len = (uint32_t) emoai_get_si_window_len(m_id, cc_id);
-	si_config->has_si_window_len = 1;
-	/* Set the number of SI messages. */
-	si_config->n_si_message = 1;
-	SiInfoMsg **si_msg;
-	si_msg = malloc(sizeof(SiInfoMsg *) * si_config->n_si_message);
-	if(si_msg == NULL)
-		goto error;
-	for (j = 0; j < si_config->n_si_message; j++) {
-		si_msg[j] = (SiInfoMsg *) malloc(sizeof(SiInfoMsg));
-		if(si_msg[j] == NULL)
-			goto error;
-		si_info_msg__init(si_msg[j]);
-		/* Set the periodicity of SI msg in radio frames. */
-		si_msg[j]->periodicity = 1;
-		si_msg[j]->has_periodicity = 1;
-		/* Set the length of the SI message in bytes. */
-		si_msg[j]->length = 10;
-		si_msg[j]->has_length = 1;
-	}
-	if(si_config->n_si_message > 0){
-		si_config->si_message = si_msg;
-	}
-	conf->si_conf = si_config;
-	/* Set the DL transmission bandwidth in RBs. */
-	conf->dl_bw = emoai_get_N_RB_DL(m_id, cc_id);
-	conf->has_dl_bw = 1;
-	/* Set the UL transmission bandwidth in RBs. */
-	conf->ul_bw = emoai_get_N_RB_UL(m_id, cc_id);
-	conf->has_ul_bw = 1;
-	/* Set the cyclic prefix length used in uplink. */
-	if (emoai_get_ul_cyc_prefix_len(m_id, cc_id) >= 0 &&
-								emoai_get_ul_cyc_prefix_len(m_id, cc_id) < 2) {
-		conf->ul_cyc_prefix_len = emoai_get_ul_cyc_prefix_len(m_id, cc_id);
-		conf->has_ul_cyc_prefix_len = 1;
-	}
-	/* Set the cyclic prefix length used in downlink. */
-	if (emoai_get_dl_cyc_prefix_len(m_id, cc_id) >= 0 &&
-							emoai_get_dl_cyc_prefix_len(m_id, cc_id) < 2) {
-		conf->dl_cyc_prefix_len = emoai_get_dl_cyc_prefix_len(m_id, cc_id);
-		conf->has_dl_cyc_prefix_len = 1;
-	}
-	/* Set the number of cell specific antenna ports. */
-	conf->antenna_ports_count = 1;
-	conf->has_antenna_ports_count = 1;
-	/* Set the type of duplex mode used. */
-	if (emoai_get_dupl_mode(m_id, cc_id) >= 0 &&
-										emoai_get_dupl_mode(m_id, cc_id) < 2) {
-		conf->dupl_mode = emoai_get_dupl_mode(m_id, cc_id);
-		conf->has_dupl_mode = 1;
-	}
-	/*
-	 * Set the Physical Random Access Channel (PRACH) configuration index.
-	 * Refer TS 36.211, section 5.7.1
-	*/
-	conf->prach_conf_index = emoai_get_prach_ConfigIndex(m_id, cc_id);
-	conf->has_prach_conf_index = 1;
-	/*
-	 * Set the Physical Random Access Channel (PRACH) frequency offset.
-	 * Refer TS 36.211, section 5.7.1
-	*/
-	conf->prach_freq_offset = emoai_get_prach_FreqOffset(m_id, cc_id);
-	conf->has_prach_freq_offset = 1;
-	/* Set the duration of RA response window in subframes. */
-	conf->ra_resp_window_size = emoai_get_ra_resp_window_size(m_id, cc_id);
-	conf->has_ra_resp_window_size = 1;
-	/* Set the resource index for ACK/NACK. Refer TS 36.213, section 10.1. */
-	conf->n1pucch_an = emoai_get_n1pucch_an(m_id, cc_id);
-	conf->has_n1pucch_an = 1;
-	/* Set the number of equally spaced cyclic time shifts. */
-	conf->deltapucch_shift = emoai_get_deltaPUCCH_Shift(m_id, cc_id);
-	conf->has_deltapucch_shift = 1;
-	/* Set whether 64 QAM is enabled or not. */
-	conf->enable_64qam = emoai_get_enable64QAM(m_id, cc_id);
-	conf->has_enable_64qam = 1;
-
-	return 0;
-
-	error:
-		EMDBG("Error getting Cell PHY configuration!");
+	if (t1->t_id < t2->t_id) {
 		return -1;
+	}
+	return 0;
 }
 
-int emoai_get_cell_mac_conf (CellMacConfig ** mac_conf,
-							 mid_t m_id,
-							 ccid_t cc_id) {
-	/*
-	 * Fill in the MAC configuration for the Cell.
-	*/
-	*mac_conf = (CellMacConfig *) malloc(sizeof(CellMacConfig));
-	CellMacConfig *conf;
-	conf = *mac_conf;
-	if (conf == NULL)
-		goto error;
-	cell_mac_config__init(conf);
+struct rrc_m_conf_trigg* rrc_m_conf_get_trigg (uint32_t rnti) {
 
-	/* Set the DL/UL subframe assignment. TDD only. */
-	conf->sf_assign = emoai_get_sf_assign(m_id, cc_id);
-	conf->has_sf_assign = 1;
-	/* Set the special subframe pattern. TDD only. See TS 36.211,table 4.2.1. */
-	conf->special_subframe_patterns = emoai_get_special_sf_pattern(m_id, cc_id);
-	conf->has_special_subframe_patterns = 1;
-	/* Set the timer for RA. MAC contention resolution timer. */
-	conf->mac_cont_resol_timer =
-						emoai_get_mac_ContentionResolutionTimer(m_id, cc_id);
-	conf->has_mac_cont_resol_timer = 1;
-	/* Set the Maximum Hybrid ARQ for Msg3 transmission. Refer TS 36.321. */
-	conf->max_harq_msg3tx = emoai_get_maxHARQ_Msg3Tx(m_id, cc_id);
-	conf->has_max_harq_msg3tx = 1;
-	/* Set the n Resource Blocks CQI. Refer TS 36.211, section 5.4. */
-	conf->nrb_cqi = emoai_get_nRB_CQI(m_id, cc_id);
-	conf->has_nrb_cqi = 1;
-
-	return 0;
-
-	error:
-		EMDBG("Error getting Cell MAC configuration!");
-		return -1;
+	struct rrc_m_conf_trigg ctxt;
+	memset(&ctxt, 0, sizeof(struct rrc_m_conf_trigg));
+	ctxt.rnti = rnti;
+	return RB_FIND(rrc_m_conf_trigg_tree, &rrc_m_conf_t_head, &ctxt);
 }
 
-int emoai_get_cell_rrc_conf (CellRrcConfig ** rrc_conf,
-							 mid_t m_id,
-							 ccid_t cc_id) {
-	int j;
-	/*
-	 * Fill in the RRC configuration for the Cell.
-	*/
-	*rrc_conf = (CellRrcConfig *) malloc(sizeof(CellRrcConfig));
-	CellRrcConfig *conf;
-	conf = *rrc_conf;
-	if (conf == NULL)
-		goto error;
-	cell_rrc_config__init(conf);
+int rrc_m_conf_rem_trigg (struct rrc_m_conf_trigg* ctxt) {
 
-	/* Set the configuration of MBSFN radio frame period in SIB2. */
-	conf->n_mbsfn_conf_rfperiod = 5;
-	uint32_t *rfperiod;
-	rfperiod = (uint32_t *) malloc(sizeof(uint32_t) *
-												conf->n_mbsfn_conf_rfperiod);
-	if(rfperiod == NULL)
-		goto error;
-	for(j = 0; j < conf->n_mbsfn_conf_rfperiod; j++){
-		rfperiod[j] = 1;
+	if (ctxt == NULL)
+		return -1;
+
+	RB_REMOVE(rrc_m_conf_trigg_tree, &rrc_m_conf_t_head, ctxt);
+	/* Free the measurement context. */
+	if (ctxt) {
+		free(ctxt);
 	}
-	conf->mbsfn_conf_rfperiod = rfperiod;
-	/* Set the configuration of MBSFN radio frame offset in SIB2. */
-	conf->n_mbsfn_conf_rfoffset = 5;
-	uint32_t *rfoffset;
-	rfoffset = (uint32_t *) malloc(sizeof(uint32_t) *
-												conf->n_mbsfn_conf_rfoffset);
-	if(rfoffset == NULL)
-		goto error;
-	for(j = 0; j < conf->n_mbsfn_conf_rfoffset; j++){
-		rfoffset[j] = 1;
-	}
-	conf->mbsfn_conf_rfoffset = rfoffset;
-	/*
-	 * Set the bitmap indicating subframes that are allocated for MBSFN
-	 * within the MBSFN frame.
-	*/
-	conf->n_mbsfn_conf_sfalloc = 5;
-	uint32_t *sfalloc;
-	sfalloc = (uint32_t *) malloc(sizeof(uint32_t) *
-													conf->n_mbsfn_conf_sfalloc);
-	if(sfalloc == NULL)
-		goto error;
-	for(j = 0; j < conf->n_mbsfn_conf_sfalloc; j++){
-		sfalloc[j] = 1;
-	}
-	conf->mbsfn_conf_sfalloc = sfalloc;
-	/* Set the SRS subframe configuration in SIB2. */
-	conf->srs_sf_conf = emoai_get_srs_SubframeConfig(m_id, cc_id);
-	conf->has_srs_sf_conf = 1;
-	/* Set the SRS bandwidth configuration in SIB2. */
-	conf->srs_bw_conf = emoai_get_srs_BandwidthConfig(m_id, cc_id);
-	conf->has_srs_bw_conf = 1;
-	/* Set the SRS maximum uplink pilot time slot. TDD only. */
-	conf->srs_max_up_pts = emoai_get_srs_MaxUpPts(m_id, cc_id);
-	conf->has_srs_max_up_pts = 1;
 
 	return 0;
+}
 
-	error:
-		EMDBG("Error getting Cell RRC configuration!");
+int rrc_m_conf_add_trigg (struct rrc_m_conf_trigg* ctxt) {
+
+	if (ctxt == NULL)
 		return -1;
+
+	RB_INSERT(rrc_m_conf_trigg_tree, &rrc_m_conf_t_head, ctxt);
+
+	return 0;
 }

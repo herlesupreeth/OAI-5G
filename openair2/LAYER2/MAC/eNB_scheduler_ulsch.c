@@ -753,6 +753,11 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
       if (drop_ue==1)
         continue;
 
+      if (CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)) {
+        LOG_W(MAC,"[eNB %d] frame %d subframe %d, UE %d/%x CC %d: not enough nCCE\n", module_idP,frameP,subframeP,UE_id,rnti,CC_id);
+        continue; // break;
+      }
+
       // MeasGap implementation
       int gapOffset = mac_eNB_get_rrc_measGap_offset(module_idP, rnti);
       int mgrp = mac_eNB_get_rrc_measGap_rep_period(module_idP, rnti);
@@ -761,31 +766,62 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
                 mac_eNB_get_rrc_status(module_idP, rnti) == RRC_RECONFIGURED) {
 
         int T = (int) mgrp / 10;
-        int rcx_gapLength = 5;
-        // 10 = total number of subframes in a frame
-        int next_sfn_check = 10 - rcx_gapLength;
+        int rcx_gapLength = 6;
+        int total_subfr = 10;
+        int total_sfn = 1024;
+        int sfnMODt = (int) (frameP % T);
+        int floor_gapOffsetDIV10 = (int) floor(gapOffset / 10);
+        int gapOffsetMOD10 = (int) (gapOffset % 10);
+        int PUSCH_timing = 0;
+        if (frame_parms->frame_type == FDD) {
+          /* 4ms after DCI transmission. */
+          PUSCH_timing = 4;
+        } else {
+          /* Maximum value among all TDD UL/DL configurations. */
+          /* Need to fix it as per UL/DL config. */
+          // PUSCH_timing = 7;
+        }
+        int measGapFlag = 0;
 
-        if (((frameP % T) == floor(gapOffset / 10)) && (subframeP == (gapOffset % 10))) {
+        if (gapOffsetMOD10 < PUSCH_timing) {
+          int nxt_sfnMODt = (int) ((frameP + 1) % total_sfn) % T;
+          /* E.g. if gapOffset = 3, gp1, in SFN 23, don't schedule UE on
+           * 9th subframe and in SFN 24 don't schedule UE on subframes
+           * 1,2,3,4,5,6,7,8.
+           */
+          if ((sfnMODt == floor_gapOffsetDIV10) &&
+                              (subframeP < (gapOffsetMOD10 + rcx_gapLength))) {
+            measGapFlag = 1;
+          }
+          else if ((nxt_sfnMODt == floor_gapOffsetDIV10) &&
+              (subframeP >= ((gapOffsetMOD10 - PUSCH_timing) % total_subfr))) {
+            measGapFlag = 1;
+          }
+        }
+        else if (gapOffsetMOD10 >= PUSCH_timing) {
+          int pre_sfnModt = (int) ((frameP - 1) % total_sfn) % T;
+          /* E.g. if gapOffset = 5, gp1, in SFN 24, don't schedule UE on
+           * subframes 1,2,3,4,5,6,7,8,9 and in SFN 25 don't schedule UE on
+           * 0th subframe.
+           */
+          if ((sfnMODt == floor_gapOffsetDIV10) &&
+                              (subframeP >= (gapOffsetMOD10 - PUSCH_timing))) {
+            measGapFlag = 1;
+          }
+          else if ((pre_sfnModt == floor_gapOffsetDIV10) &&
+              (subframeP < ((gapOffsetMOD10 + rcx_gapLength) % total_subfr))) {
+            measGapFlag = 1;
+          }
+        }
+        if (measGapFlag == 1) {
+          add_ue_ulsch_info(module_idP,
+                            CC_id,
+                            UE_id,
+                            subframeP,
+                            S_UL_NONE);
           continue;
         }
-        //(gapOffset % 10) < 5 // check for (SFN + 1) or only SFN  (In next 5 subframe UE does not transmit any data)
-        else if ((gapOffset % 10) < next_sfn_check) {
-          if (((frameP % T) == floor(gapOffset / 10)) && ((gapOffset % 10) < subframeP <= ((gapOffset % 10) + rcx_gapLength)))
-            continue;
-        }
-        //http://howltestuffworks.blogspot.it/2014/07/e-utran-provides-ue-with-measurement.html#comment-form
-        else {
-          if ((((frameP % T) == (floor(gapOffset / 10) + 1)) && (subframeP <= (((gapOffset % 10) + rcx_gapLength) % 10))) ||
-             (((frameP % T) == floor(gapOffset / 10)) && (subframeP > (gapOffset % 10))))
-            continue;
-        }
       }
-
-      if (CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)) {
-        LOG_W(MAC,"[eNB %d] frame %d subframe %d, UE %d/%x CC %d: not enough nCCE\n", module_idP,frameP,subframeP,UE_id,rnti,CC_id);
-        continue; // break;
-      }
-
 
       //      printf("UE %d/%x is feasible, mode %s\n",UE_id,rnti,mode_string[eNB_UE_stats->mode]);
 

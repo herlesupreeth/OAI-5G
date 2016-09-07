@@ -23,11 +23,29 @@
 #ifndef __EMOAI_H
 #define __EMOAI_H
 
+#include <pthread.h>
+
 #include <emage/emage.h>
-#include "emoai_layer2.h"
 #include "emoai_config.h"
+
+/* OAI supports number of cards = 1 in current implementation.
+ * If more than one CC is supported, multithreaded approach will
+ * be taken.
+ */
+#define DEFAULT_ENB_ID 0
 
 /* Operations offered by this technology abstraction module. */
 extern struct em_agent_ops sim_ops;
+
+/* Lock for handling the rrc measurements triggers list. */
+pthread_spinlock_t rrc_meas_t_lock;
+
+/* Lock for handling the rrc measurements configuration triggers list. */
+pthread_spinlock_t rrc_m_conf_t_lock;
+
+/* Defines the custom initialization for the OAI abstraction layer, which are to be performed
+ * initally when OAI attaches to controller through the agent.
+ */
+int emoai_init (void);
 
 #endif

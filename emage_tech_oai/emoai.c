@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-/* 
+/*
  * OAI technology abstractions implementation for emage.
  */
 
@@ -21,7 +21,25 @@
 
 /* Agent operations for OAI application. */
 struct em_agent_ops sim_ops = {
-	.L2_stat_reply = emoai_L2_stats_reply,
-	.UE_config_reply = emoai_ue_config_reply,
-	.eNB_config_reply = emoai_eNB_config_reply,
+	.init = emoai_init,
+	.UEs_ID_report = emoai_UEs_ID_report,
+	.RRC_meas_conf_report = emoai_RRC_meas_conf_report,
+	// .RRC_measurements = emoai_RRC_measurements,
 };
+
+int emoai_init (void) {
+
+	/* Initializing lock for rrc measurements triggers list. */
+	if (pthread_spin_init(&rrc_meas_t_lock, PTHREAD_PROCESS_SHARED) != 0) {
+		goto error;
+	}
+	/* Initializing lock for rrc measurements configuration triggers list. */
+	if (pthread_spin_init(&rrc_m_conf_t_lock, PTHREAD_PROCESS_SHARED) != 0) {
+		goto error;
+	}
+
+	return 0;
+
+	error:
+		return -1;
+}

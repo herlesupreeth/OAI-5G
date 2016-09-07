@@ -3006,7 +3006,7 @@ int Qoffsettab[31] = {-24,-22,-20,-18,-16,-14,-12,-10,-8,-6,-5,-4,-3,-2,-1,0,1,2
 int PhysCellIdRange[16] = {4,8,12,16,24,32,48,64,84,96,128,168,252,504,0,0};
 
 uint64_t arfcn_to_freq(long arfcn) {
-  
+
   if (arfcn < 600)  // Band 1
     return((uint64_t)2110000000 + (arfcn*100000));
   else if (arfcn <1200) // Band 2
@@ -3087,7 +3087,7 @@ static void dump_sib5( SystemInformationBlockType5_t *sib5 )
   InterFreqCarrierFreqInfo_t *ifcfInfo;
 
   LOG_I( RRC, "Dumping SIB5 (see TS36.331 V8.21.0)\n" );
-  
+
   for (i=0;i<interFreqCarrierFreqList.list.count;i++) {
     LOG_I(RRC, "SIB5 InterFreqCarrierFreq element %d/%d\n",i,interFreqCarrierFreqList.list.count);
     ifcfInfo = interFreqCarrierFreqList.list.array[i];
@@ -3140,16 +3140,16 @@ static void dump_sib5( SystemInformationBlockType5_t *sib5 )
     if (ifcfInfo->q_OffsetFreq)
       LOG_I(RRC,"   Q_OffsetFreq : %d\n",Qoffsettab[*ifcfInfo->q_OffsetFreq]);
     if (ifcfInfo->interFreqNeighCellList) {
-      
+
       for (j=0;j<ifcfInfo->interFreqNeighCellList->list.count;j++) {
 	LOG_I(RRC,"   Cell %d\n");
 	LOG_I(RRC,"      PhysCellId : %d\n",ifcfInfo->interFreqNeighCellList->list.array[j]->physCellId);
 	LOG_I(RRC,"      Q_OffsetRange : %d\n",ifcfInfo->interFreqNeighCellList->list.array[j]->q_OffsetCell);
-	
+
       }
     }
     if (ifcfInfo->interFreqBlackCellList) {
-      
+
       for (j=0;j<ifcfInfo->interFreqBlackCellList->list.count;j++) {
 	LOG_I(RRC,"   Cell %d\n");
 	LOG_I(RRC,"      PhysCellId start: %d\n",ifcfInfo->interFreqBlackCellList->list.array[j]->start);
@@ -3161,16 +3161,16 @@ static void dump_sib5( SystemInformationBlockType5_t *sib5 )
 #ifdef Rel10
     if (ifcfInfo->ext1 && ifcfInfo->ext1->q_QualMin_r9)
       LOG_I(RRC,"   Q_QualMin_r9 : %d\n",*ifcfInfo->ext1->q_QualMin_r9);
-    
+
     if (ifcfInfo->ext1 && ifcfInfo->ext1->threshX_Q_r9) {
       LOG_I(RRC,"   threshX_HighQ_r9 : %d\n",ifcfInfo->ext1->threshX_Q_r9->threshX_HighQ_r9);
       LOG_I(RRC,"   threshX_LowQ_r9: %d\n",ifcfInfo->ext1->threshX_Q_r9->threshX_LowQ_r9);
     }
 #endif
   }
-  
+
 }
-  
+
 #ifdef Rel10
 static void dump_sib13( SystemInformationBlockType13_r9_t *sib13 )
 {
@@ -3252,9 +3252,9 @@ static int decode_SI( const protocol_ctxt_t* const ctxt_pP, const uint8_t eNB_in
 #endif
 #if !(defined(ENABLE_ITTI) && defined(ENABLE_USE_MME))
 	  rrc_ue_generate_RRCConnectionRequest( ctxt_pP, eNB_index );
-	
+
 #endif
-	
+
 	if (UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].State == RRC_IDLE) {
 	  LOG_I( RRC, "[UE %d] Received SIB1/SIB2/SIB3 Switching to RRC_SI_RECEIVED\n", ctxt_pP->module_id );
 	  UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].State = RRC_SI_RECEIVED;
@@ -3262,7 +3262,7 @@ static int decode_SI( const protocol_ctxt_t* const ctxt_pP, const uint8_t eNB_in
 	  {
 	    MessageDef                            *message_ral_p = NULL;
 	    rrc_ral_system_information_ind_t       ral_si_ind;
-	    
+
 	    message_ral_p = itti_alloc_new_message (TASK_RRC_UE, RRC_RAL_SYSTEM_INFORMATION_IND);
 	    memset(&ral_si_ind, 0, sizeof(rrc_ral_system_information_ind_t));
 	    ral_si_ind.plmn_id.MCCdigit2 = '0';
@@ -3313,7 +3313,7 @@ static int decode_SI( const protocol_ctxt_t* const ctxt_pP, const uint8_t eNB_in
       if ((UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus&16) == 0) {
 	UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus|=16;
 	new_sib=1;
-     
+
 	memcpy( UE_rrc_inst[ctxt_pP->module_id].sib5[eNB_index], &typeandinfo->choice.sib5, sizeof(SystemInformationBlockType5_t) );
 	LOG_I( RRC, "[UE %"PRIu8"] Frame %"PRIu32" Found SIB5 from eNB %"PRIu8"\n", ctxt_pP->module_id, ctxt_pP->frame, eNB_index );
 	dump_sib5(UE_rrc_inst[ctxt_pP->module_id].sib5[eNB_index]);
@@ -3324,7 +3324,7 @@ static int decode_SI( const protocol_ctxt_t* const ctxt_pP, const uint8_t eNB_in
       if ((UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus&32) == 0) {
 	UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus|=32;
 	new_sib=1;
-     
+
 	memcpy( UE_rrc_inst[ctxt_pP->module_id].sib6[eNB_index], &typeandinfo->choice.sib6, sizeof(SystemInformationBlockType6_t) );
 	LOG_I( RRC, "[UE %"PRIu8"] Frame %"PRIu32" Found SIB6 from eNB %"PRIu8"\n", ctxt_pP->module_id, ctxt_pP->frame, eNB_index );
       }
@@ -3352,7 +3352,7 @@ static int decode_SI( const protocol_ctxt_t* const ctxt_pP, const uint8_t eNB_in
       if ((UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus&256) == 0) {
 	UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus|=256;
 	new_sib=1;
-      
+
 	memcpy( UE_rrc_inst[ctxt_pP->module_id].sib9[eNB_index], &typeandinfo->choice.sib9, sizeof(SystemInformationBlockType9_t) );
 	LOG_I( RRC, "[UE %"PRIu8"] Frame %"PRIu32" Found SIB9 from eNB %"PRIu8"\n", ctxt_pP->module_id, ctxt_pP->frame, eNB_index );
       }
@@ -3387,12 +3387,12 @@ static int decode_SI( const protocol_ctxt_t* const ctxt_pP, const uint8_t eNB_in
 	LOG_I( RRC, "[UE %"PRIu8"] Frame %"PRIu32" Found SIB12 from eNB %"PRIu8"\n", ctxt_pP->module_id, ctxt_pP->frame, eNB_index );
       }
       break;
-	
+
     case SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib13_v920:
       if ((UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus&4096) == 0) {
 	UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus|=4096;
 	new_sib=1;
-	
+
 	memcpy( UE_rrc_inst[ctxt_pP->module_id].sib13[eNB_index], &typeandinfo->choice.sib13_v920, sizeof(SystemInformationBlockType13_r9_t) );
 	LOG_I( RRC, "[UE %"PRIu8"] Frame %"PRIu32" Found SIB13 from eNB %"PRIu8"\n", ctxt_pP->module_id, ctxt_pP->frame, eNB_index );
 	dump_sib13( UE_rrc_inst[ctxt_pP->module_id].sib13[eNB_index] );
@@ -3438,7 +3438,7 @@ static int decode_SI( const protocol_ctxt_t* const ctxt_pP, const uint8_t eNB_in
     if (UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIcnt == sib1->schedulingInfoList.list.count)
       rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE );
 
-    LOG_I(RRC,"SIStatus %x, SIcnt %d/%d\n", 
+    LOG_I(RRC,"SIStatus %x, SIcnt %d/%d\n",
 	  UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus,
 	  UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIcnt,
 	  sib1->schedulingInfoList.list.count);
@@ -4183,7 +4183,7 @@ void *rrc_ue_task( void *args_p )
 		    PDCP_TRANSMISSION_MODE_CONTROL);
       break;
     }
-      
+
 # endif
 
 # if ENABLE_RAL

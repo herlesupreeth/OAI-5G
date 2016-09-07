@@ -665,6 +665,7 @@ add_boolean_option(ENABLE_FXP              True "????")
 add_boolean_option(ENABLE_NEW_MULTICAST    False "specific to oaisim")
 add_boolean_option(EXMIMO_IOT              True "????")
 add_boolean_option(LARGE_SCALE             False "specific to oaisim: defines max eNB=2 and max UE=120")
+# LOCALIZATION can be enabled to measure distance between eNB and UE based on time and power #
 add_boolean_option(LOCALIZATION            False "???")
 add_integer_option(MAX_NUM_CCs             1     "????")
 add_boolean_option(MU_RECEIVER             False "????")
@@ -866,8 +867,8 @@ if (${EMAGE_AGENT})
   include_directories (${CNET_EMAGE_TECH_OAI_DIR})
   add_library(WRAP_LIB
     ${CNET_EMAGE_TECH_OAI_DIR}/emoai_common.c
-    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_layer2.c
     ${CNET_EMAGE_TECH_OAI_DIR}/emoai_config.c
+    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_rrc_measurements.c
     ${CNET_EMAGE_TECH_OAI_DIR}/emoai.c
   )
 

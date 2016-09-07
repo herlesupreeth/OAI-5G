@@ -49,7 +49,7 @@ white='\E[37m'
 reset_color='\E[00m'
 COLORIZE=1
 
-cecho()  {  
+cecho()  {
     # Color-echo
     # arg1 = message
     # arg2 = color
@@ -135,10 +135,10 @@ clean_kernel() {
 clean_all_files() {
  set_openair_env
  dir=$OPENAIR_DIR/cmake_targets
- rm -rf $dir/log $OPENAIR_DIR/targets/bin/* 
+ rm -rf $dir/log $OPENAIR_DIR/targets/bin/*
  rm -rf $dir/lte_build_oai $dir/lte-simulators/build
  rm -rf $dir/oaisim_build_oai/build $dir/oaisim_build_oai/CMakeLists.txt
- rm -rf $dir/autotests/bin $dir/autotests/log $dir/autotests/*/build 
+ rm -rf $dir/autotests/bin $dir/autotests/log $dir/autotests/*/build
 }
 
 ###################################
@@ -190,11 +190,11 @@ install_nettle_from_source() {
     fi
     tar -xzf nettle-2.5.tar.gz
     cd nettle-2.5/
-    ./configure --disable-openssl --enable-shared --prefix=/usr 
+    ./configure --disable-openssl --enable-shared --prefix=/usr
     echo "Compiling nettle"
     make -j`nproc`
-    make check 
-    $SUDO make install 
+    make check
+    $SUDO make install
     ) >& $nettle_install_log
 }
 
@@ -202,7 +202,7 @@ install_gnutls_from_source(){
     gnutls_install_log=$OPENAIR_DIR/cmake_targets/log/gnutls_install_log.txt
     echo_info "\nInstalling Gnutls. The log file for Gnutls installation is here: $gnutls_install_log "
     (
-    cd /tmp 
+    cd /tmp
     echo "Downloading gnutls archive"
     $SUDO rm -rf /tmp/gnutls-3.1.23.tar.xz* /tmp/gnutls-3.1.23
     wget http://mirrors.dotsrc.org/gcrypt/gnutls/v3.1/gnutls-3.1.23.tar.xz
@@ -219,7 +219,7 @@ install_gnutls_from_source(){
     ./configure --prefix=/usr
     echo "Compiling gnutls"
     make -j`nproc`
-    $SUDO make install 
+    $SUDO make install
     )>& $gnutls_install_log
 }
 
@@ -242,7 +242,7 @@ install_usrp_uhd_driver() {
         # We move uhd-host apart because it depends on linux kernel version
         # On newer kernels, it fails to install
         #$SUDO apt-get -y install uhd-host
-        $SUDO uhd_images_downloader 
+        $SUDO uhd_images_downloader
 }
 
 check_install_bladerf_driver(){
@@ -252,7 +252,7 @@ check_install_bladerf_driver(){
 	fi
 	$SUDO apt-get install -y bladerf libbladerf-dev
 	$SUDO apt-get install -y bladerf-firmware-fx3
-	$SUDO apt-get install -y bladerf-fpga-hostedx40	
+	$SUDO apt-get install -y bladerf-fpga-hostedx40
 }
 
 flash_firmware_bladerf() {
@@ -291,7 +291,7 @@ check_install_additional_tools (){
     $SUDO pip install pyroute2
     $SUDO rm -fr /opt/ssh
     $SUDO GIT_SSL_NO_VERIFY=true git clone https://gist.github.com/2190472.git /opt/ssh
-    
+
     log_netiface=$OPENAIR_DIR/cmake_targets/log/netiface_install_log.txt
     echo_info "Installing Netinterfaces package. The logfile for installation is in $log_netiface"
     (
@@ -385,7 +385,7 @@ check_install_oai_software() {
 	wget
 
     $SUDO update-alternatives --set liblapack.so /usr/lib/atlas-base/atlas/liblapack.so
-    
+
     # First we remove gnutls/nettle installation and then install from sources
     #$SUDO apt-get remove -y libgnutls-dev nettle-dev nettle-bin
     #install_nettle_from_source
@@ -400,11 +400,11 @@ install_asn1c_from_source(){
     (
     $SUDO rm -rf /tmp/asn1c-r1516
     svn co https://github.com/vlm/asn1c/trunk  /tmp/asn1c-r1516 -r 1516
-    cd /tmp/asn1c-r1516 
-    patch -p0 < $OPENAIR_DIR/openair3/S1AP/MESSAGES/ASN1/asn1cpatch.p0 
-    patch -p0 < $OPENAIR_DIR/openair3/S1AP/MESSAGES/ASN1/asn1cpatch_2.p0 
-    patch -p0 < $OPENAIR_DIR/openair2/RRC/LITE/MESSAGES/asn1c/asn1cpatch.p0 
-    patch -p0 < $OPENAIR_DIR/openair3/S1AP/MESSAGES/ASN1/asn1cpatch_3.p0 
+    cd /tmp/asn1c-r1516
+    patch -p0 < $OPENAIR_DIR/openair3/S1AP/MESSAGES/ASN1/asn1cpatch.p0
+    patch -p0 < $OPENAIR_DIR/openair3/S1AP/MESSAGES/ASN1/asn1cpatch_2.p0
+    patch -p0 < $OPENAIR_DIR/openair2/RRC/LITE/MESSAGES/asn1c/asn1cpatch.p0
+    patch -p0 < $OPENAIR_DIR/openair3/S1AP/MESSAGES/ASN1/asn1cpatch_3.p0
     ./configure
     make -j`nproc`
     $SUDO make install
@@ -413,7 +413,7 @@ install_asn1c_from_source(){
 }
 
 #################################################
-# 2. compile 
+# 2. compile
 ################################################
 
 install_nas_tools() {
@@ -443,7 +443,7 @@ set_openair_env(){
     [ -f "/.$fullpath" ] || fullpath=`readlink -f $PWD/$fullpath`
     openair_path=${fullpath%/cmake_targets/*}
     openair_path=${openair_path%/targets/*}
-    openair_path=${openair_path%/openair[123]/*}    
+    openair_path=${openair_path%/openair[123]/*}
     export OPENAIR_DIR=$openair_path
     export OPENAIR1_DIR=$openair_path/openair1
     export OPENAIR2_DIR=$openair_path/openair2
@@ -476,7 +476,7 @@ do
            arraycounter=`expr $arraycounter - 1`
            ## We want to kill child process id first and then parent id's
            while [ $arraycounter -ne 0 ]
-           do  
+           do
              echo "first we send ctrl-c to program"
              $SUDO kill -INT "${procid[$arraycounter]}"
              sleep 5
