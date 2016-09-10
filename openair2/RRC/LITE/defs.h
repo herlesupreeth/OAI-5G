@@ -178,9 +178,12 @@ typedef enum HO_STATE_e {
 // #define MAX_MEAS_OBJ 6
 // #define MAX_MEAS_CONFIG 6
 // #define MAX_MEAS_ID 6
-#define MAX_MEAS_OBJ 32
-#define MAX_MEAS_CONFIG 32
-#define MAX_MEAS_ID 32
+// #define MAX_MEAS_OBJ 32
+// #define MAX_MEAS_CONFIG 32
+// #define MAX_MEAS_ID 32
+#define MAX_MEAS_OBJ 7
+#define MAX_MEAS_CONFIG 7
+#define MAX_MEAS_ID 7
 
 #define PAYLOAD_SIZE_MAX 1024
 #define RRC_BUF_SIZE 255
@@ -310,10 +313,13 @@ typedef struct eNB_RRC_UE_s {
   uint8_t                            DRB_config_action[8];
   struct PhysicalConfigDedicated*    physicalConfigDedicated;
   struct SPS_Config*                 sps_Config;
-  MeasObjectToAddMod_t*              MeasObj[MAX_MEAS_OBJ];
-  struct ReportConfigToAddMod*       ReportConfig[MAX_MEAS_CONFIG];
+  MeasObjectToAddMod_t**              MeasObj;
+  // MeasObjectToAddMod_t*              MeasObj[MAX_MEAS_OBJ];
+  struct ReportConfigToAddMod**       ReportConfig;
+  // struct ReportConfigToAddMod*       ReportConfig[MAX_MEAS_CONFIG];
   struct QuantityConfig*             QuantityConfig;
-  struct MeasIdToAddMod*             MeasId[MAX_MEAS_ID];
+  struct MeasIdToAddMod**             MeasId;
+  // struct MeasIdToAddMod*             MeasId[MAX_MEAS_ID];
   MAC_MainConfig_t*                  mac_MainConfig;
   MeasGapConfig_t*                   measGapConfig;
   SRB_INFO                           SI;

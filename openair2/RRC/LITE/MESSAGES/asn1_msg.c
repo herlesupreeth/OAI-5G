@@ -1905,9 +1905,12 @@ do_RRCConnectionReconfiguration(
   struct SPS_Config                  *sps_Config,
   struct PhysicalConfigDedicated     *physicalConfigDedicated,
   MeasObjectToAddModList_t           *MeasObj_list,
+  MeasObjectToRemoveList_t           *MeasObj_rem_list,
   ReportConfigToAddModList_t         *ReportConfig_list,
+  ReportConfigToRemoveList_t         *ReportConfig_rem_list,
   QuantityConfig_t                   *quantityConfig,
   MeasIdToAddModList_t               *MeasId_list,
+  MeasIdToRemoveList_t               *MeasId_rem_list,
   MAC_MainConfig_t                   *mac_MainConfig,
   MeasGapConfig_t                    *measGapConfig,
   MobilityControlInfo_t              *mobilityInfo,
@@ -1964,7 +1967,7 @@ do_RRCConnectionReconfiguration(
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.radioResourceConfigDedicated->mac_MainConfig=NULL;
   }
 
-  if (MeasId_list != NULL) {
+  if ((MeasId_list != NULL) || (MeasId_rem_list != NULL)) {
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig  = CALLOC(1,
         sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig));
     memset((void*)rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig,
@@ -1973,6 +1976,10 @@ do_RRCConnectionReconfiguration(
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->reportConfigToAddModList = ReportConfig_list;
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measIdToAddModList       = MeasId_list;
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measObjectToAddModList   = MeasObj_list;
+
+    rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->reportConfigToRemoveList = ReportConfig_rem_list;
+    rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measIdToRemoveList       = MeasId_rem_list;
+    rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measObjectToRemoveList   = MeasObj_rem_list;
 
     if (quantityConfig!=NULL) {
       rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->quantityConfig = CALLOC(1,

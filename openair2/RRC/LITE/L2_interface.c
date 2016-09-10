@@ -803,6 +803,9 @@ void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP,
       /* If UE is in inactive state, trigger the UEs ID report if it exists.
        */
       emoai_trig_UEs_ID_report();
+      /* If UE is in inactive state, remove the UE RRC protocol context stored.
+       */
+      emoai_rem_UE_RRC_pctxt(rntiP);
     #endif
     LOG_I(RRC,"Frame %d, Subframe %d: UE %x UL failure, activating timer\n",frameP,subframeP,rntiP);
     ue_context_p->ue_context.ul_failure_timer=1;

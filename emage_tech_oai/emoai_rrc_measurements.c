@@ -20,6 +20,21 @@
 #include "emoai_rrc_measurements.h"
 
 #include "RRC/LITE/extern.h"
+#include "msc.h"
+#include "asn1_msg.h"
+
+/* This disables EXMIMO_IOT flag and enables RRC measurements. */
+#if defined(OAI_USRP)
+  #undef EXMIMO_IOT
+#endif
+
+/* Holds the context of all the UEs maintained at RRC OAI eNB for performing
+ * RRC operations.
+ */
+struct UE_RRC_proto_ctxt * UE_RRC_proto_ctxt_list = NULL;
+
+/* Number maintained at RRC OAI eNB for lower layer signalling. */
+mui_t * emoai_rrc_eNB_mui;
 
 /* List of all LTE TDD band numbers. */
 int eutra_tdd_bands [14] = {
@@ -220,8 +235,8 @@ RB_GENERATE(
 /******************************************************************************/
 
 int rrc_meas_comp_trigg (
-	struct rrc_meas_trigg* t1,
-	struct rrc_meas_trigg* t2) {
+	struct rrc_meas_trigg * t1,
+	struct rrc_meas_trigg * t2) {
 
 	if (t1->t_id > t2->t_id) {
 		return 1;
@@ -279,6 +294,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 /****** UNLOCK ****************************************************************/
 
 	if (ctxt == NULL) {
+		emoai_RRC_meas_reconf(p->rnti, -1, p->meas->measId, NULL, NULL);
 		/* Free the measurement report received from UE. */
 		ASN_STRUCT_FREE(asn_DEF_MeasResults, p->meas);
 		/* Free the params. */
@@ -507,7 +523,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 	reply->te = te;
 
 	/* Send the report to controller. */
-	em_send(emoai_get_b_id(), reply);
+	// em_send(emoai_get_b_id(), reply);
 
 	/* Free the measurement report received from UE. */
 	ASN_STRUCT_FREE(asn_DEF_MeasResults, p->meas);
@@ -527,20 +543,26 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 
 float emoai_get_fdd_band_dl_freq (int band_array_index, uint32_t earfcn) {
 	/* Return DL freq. */
-	return (fdd_bands_dl[band_array_index].f_DLl +
-				(0.1 * (earfcn - fdd_bands_dl[band_array_index].cn_DLl)));
+	float freq = fdd_bands_dl[band_array_index].f_DLl +
+					(0.1 * (earfcn - fdd_bands_dl[band_array_index].cn_DLl));
+	freq = roundf(freq * 10.0)/10.0;
+	return freq;
 }
 
 float emoai_get_fdd_band_ul_freq (int band_array_index, uint32_t earfcn) {
 	/* Return UL freq. */
-	return (fdd_bands_ul[band_array_index].f_ULl +
-				(0.1 * (earfcn - fdd_bands_ul[band_array_index].cn_ULl)));
+	float freq = fdd_bands_ul[band_array_index].f_ULl +
+					(0.1 * (earfcn - fdd_bands_ul[band_array_index].cn_ULl));
+	freq = roundf(freq * 10.0)/10.0;
+	return freq;
 }
 
 float emoai_get_tdd_band_freq (int band_array_index, uint32_t earfcn) {
 	/* Return TDD band freq. */
-	return (tdd_bands[band_array_index].f_l +
-				(0.1 * (earfcn - tdd_bands[band_array_index].cn_l)));
+	float freq = tdd_bands[band_array_index].f_l +
+						(0.1 * (earfcn - tdd_bands[band_array_index].cn_l));
+	freq = roundf(freq * 10.0)/10.0;
+	return freq;
 }
 
 int emoai_get_fdd_dl_band_array_index (uint32_t earfcn) {
@@ -585,160 +607,1504 @@ int emoai_get_tdd_band_bw (int band_array_index) {
 	return t_bands_bw[band_array_index].bw;
 }
 
-// int emoai_comp_EUTRA_measObj (MeasObjEUTRA * req_mo, MeasObjEUTRA * ctxt_mo) {
+int emoai_comp_req_freq (uint32_t earfcnR, uint32_t earfcnC) {
 
-// 	if (req_mo == NULL || ctxt_mo == NULL) {
-// 		return 0;
-// 	}
+	float freqR = 0.0, freqC = 0.0;
+	int tdd_bands_index1, tdd_bands_index2;
+	int fdd_bands_indexU1, fdd_bands_indexU2;
+	int fdd_bands_indexD1, fdd_bands_indexD2;
 
-// 	if (req_mo->has_carrier_freq && ctxt_mo->has_carrier_freq) {
+	/* Get the frequency corresponding to EARFCN of requests message. */
+	tdd_bands_index1 = emoai_get_tdd_band_array_index(earfcnR);
+	if (tdd_bands_index1 != -1) {
+		freqR = emoai_get_tdd_band_freq(tdd_bands_index1, earfcnR);
+	}
+	/* Check for FDD downlink frequency. */
+	fdd_bands_indexD1 = emoai_get_fdd_dl_band_array_index(earfcnR);
+	if (fdd_bands_indexD1 != -1) {
+		freqR = emoai_get_fdd_band_dl_freq(fdd_bands_indexD1, earfcnR);
+	}
+	/* Checking for FDD uplink frequency. */
+	fdd_bands_indexU1 = emoai_get_fdd_ul_band_array_index(earfcnR);
+	if (fdd_bands_indexU1 != -1) {
+		freqR = emoai_get_fdd_band_ul_freq(fdd_bands_indexU1, earfcnR);
+	}
 
+	/* Get the frequency corresponding to EARFCN of trig context message. */
+	tdd_bands_index2 = emoai_get_tdd_band_array_index(earfcnC);
+	if (tdd_bands_index2 != -1) {
+		freqC = emoai_get_tdd_band_freq(tdd_bands_index2, earfcnC);
+	}
+	/* Check for FDD downlink frequency. */
+	fdd_bands_indexD2 = emoai_get_fdd_dl_band_array_index(earfcnC);
+	if (fdd_bands_indexD2 != -1) {
+		freqC = emoai_get_fdd_band_dl_freq(fdd_bands_indexD2, earfcnC);
+	}
+	/* Checking for FDD uplink frequency. */
+	fdd_bands_indexU2 = emoai_get_fdd_ul_band_array_index(earfcnC);
+	if (fdd_bands_indexU2 != -1) {
+		freqC = emoai_get_fdd_band_ul_freq(fdd_bands_indexU2, earfcnC);
+	}
 
+	/* Return value meaning:
+	 * 0 -> frequencies are not equal
+	 * -1 -> invalid request
+	 * 1 -> frequencies are equal
+	 */
 
-// 	}
+	if ((freqR == freqC) && (earfcnR == earfcnC)) {
+		return 1;
+	} else if ((freqR == freqC) && (earfcnR != earfcnC)) {
+		/* Two MeasObj cannot exist at same physical frequency. */
+		return -1;
+	}
+	return 0;
+}
 
-// 	(*m)->has_meas_bw = 1;
-// 	(*m)->meas_bw = m_obj.allowedMeasBandwidth;
-// 	/* Fill the cells for which measurements must be fetched. */
-// 	if (m_obj.cellsToAddModList != NULL) {
-// 		size_t n_cells = m_obj.cellsToAddModList->list.count;
-// 		CellsToMeasure **cells = malloc(n_cells * sizeof(CellsToMeasure *));
+int emoai_comp_EUTRA_measObj (MeasObjEUTRA * req_mo, MeasObjEUTRA * ctxt_mo) {
 
-// 		for (i = 0; i < n_cells; i++) {
-// 			cells[i] = malloc(sizeof(CellsToMeasure));
-// 			cells_to_measure__init(cells[i]);
-// 			/* Fill the physical cell id. */
-// 			cells[i]->has_phy_cell_id = 1;
-// 			cells[i]->phy_cell_id = m_obj.cellsToAddModList->
-// 													list.array[i]->physCellId;
-// 			/* Fill the cell offset range. */
-// 			cells[i]->has_offset_range = 1;
-// 			cells[i]->offset_range =  m_obj.cellsToAddModList->
-// 											list.array[i]->cellIndividualOffset;
+	/* Return value meaning:
+	 * 0 -> measOBjs are not equal
+	 * -1 -> invalid measOBj request
+	 * 1 -> measOBj exists
+	 */
+	int ret = 1;
 
-// 		}
-// 		(*m)->n_cells = n_cells;
-// 		(*m)->cells = cells;
-// 	}
-// 	/* Fill the blacklisted cells for which measurements must not be fetched. */
-// 	if (m_obj.blackCellsToAddModList != NULL) {
-// 		size_t n_bkl_cells = m_obj.blackCellsToAddModList->list.count;
-// 		BlacklistCells **bkl_cells =
-// 								malloc(n_bkl_cells * sizeof(BlacklistCells *));
+	if ((req_mo == NULL) || (ctxt_mo == NULL)) {
+		return -1;
+	}
 
-// 		for (i = 0; i < n_bkl_cells; i++) {
-// 			bkl_cells[i] = malloc(sizeof(BlacklistCells));
-// 			blacklist_cells__init(bkl_cells[i]);
-// 			/* Fill the starting PCI value. */
-// 			bkl_cells[i]->has_start_pci = 1;
-// 			bkl_cells[i]->start_pci = m_obj.blackCellsToAddModList->
-// 										list.array[i]->physCellIdRange.start;
-// 			/* Fill in the range of PCI to blacklist. */
-// 			bkl_cells[i]->has_range = 1;
-// 			bkl_cells[i]->range = *m_obj.blackCellsToAddModList->
-// 										list.array[i]->physCellIdRange.range;
-// 		}
-// 		(*m)->n_bkl_cells = n_bkl_cells;
-// 		(*m)->bkl_cells = bkl_cells;
-// 	}
+	/* Validate the request frequency parameters since two MeasObj
+	 * cannot exist at same physical frequency.
+	*/
+	int compared_value = emoai_comp_req_freq(req_mo->carrier_freq,
+											ctxt_mo->carrier_freq);
+	if (compared_value == -1) {
+		/* Invalid request parameter. */
+		return -1;
+	} else {
+		ret = compared_value;
+	}
 
-// }
+	/* Check the array size of cells for which measurements have to be
+	 * fetched. Size of the array cannot exceed 32 (3GPP). No modification
+	 * features support for now, only replacing with new cells list.
+	*/
+	// if ((ret == 1) && ((req_mo->n_cells + ctxt_mo->n_cells) > 32)) {
+	// 	return -1;
+	// }
+	/* Check the array size of cells to be blacklisted from measurements.
+	 * Size of the array cannot exceed 32 (3GPP). No modification
+	 * features support for now, only replacing with new cells list.
+	*/
+	// if ((ret == 1) && ((req_mo->n_bkl_cells + ctxt_mo->n_bkl_cells) > 32)) {
+	// 	return -1;
+	// }
 
-// int rrc_meas_comp_trigg_measObj (MeasObject *m_obj) {
+	return ret;
+}
 
-// 	if (m_obj == NULL)
-// 		return -1;
+int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject * m_obj) {
 
-// 	struct rrc_meas_trigg ctxt;
-// 	memset(&ctxt, 0, sizeof(struct rrc_meas_trigg));
-// 	/* Only EUTRA measurements are supported now. */
-// 	if (m_obj->meas_obj_case == MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA) {
-// 		/* Compare with each of the measurement object stored. */
-// 		RB_FOREACH(ctxt, rrc_meas_trigg_tree, &rrc_meas_t_head) {
-// 			int flag = 1;
+	/* return value meaning:
+	 * 0 -> not equal
+	 * -1 -> error in request
+	 * number > 0 -> measOBj exists and the number represents its ID
+	 */
 
-// 			if (ctxt->m_obj->meas_obj_case ==
-// 										MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA) {
-// 				flag = emoai_comp_EUTRA_measObj(m_obj->measobj_eutra,
-// 												ctxt->m_obj->measobj_eutra);
-// 			}
-// 			if (flag == 1) {
-// 				/* Measurement Objects are equal. */
-// 				return 1;
-// 			}
-// 		}
-// 	}
-// 	/* Measurement Objects are not equal. */
-// 	return 0;
-// }
+	if (m_obj == NULL)
+		return -1;
 
-// int emoai_RRC_measurements (EmageMsg * request, EmageMsg ** reply) {
+	struct rrc_meas_trigg *ctxt;
+	/* Only EUTRA measurements are supported now. */
+	if (m_obj->meas_obj_case == MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA) {
+		/* Assign the requested measurement object to a variable. */
+		MeasObjEUTRA *measobj_eutra = m_obj->measobj_eutra;
+		float max_band_freq = 0.0, min_band_freq = 0.0, freqR = 0.0;
+		int band_bw = 0;
+		/* RBs to bandwidth frequency (MHz) lookup. */
+		float meas_bw_f[6] = {1.4, 3, 5, 10, 15, 20};
 
-// 	int i;
-// 	uint32_t ue_id;
-// 	struct rrc_meas_trigg *ctxt;
-// 	StatsReqStatus req_status = STATS_REQ_STATUS__SREQS_SUCCESS;
+		/* Check for the existence of bandwidth to measure in request.
+		*/
+		if (!measobj_eutra->has_meas_bw) {
+			/* MeasObj must have allowed measurement bandwidth parameter. */
+			return -1;
+		}
+		if (!measobj_eutra->has_carrier_freq) {
+			/* MeasObj must have carrier frequency. */
+			return -1;
+		}
+		/* Check whether UE supports requested frequency band. */
+		int ue_supp_bands_n = emoai_get_num_bands(ue_id);
+		uint32_t *ue_supp_bands = emoai_get_bands(ue_id);
+		int band_flag = 0;
+		int tdd_bands_index, fdd_bands_indexD, fdd_bands_indexU;
+		/* Get the frequency band corresponding to EARFCN of request message. */
+		tdd_bands_index = emoai_get_tdd_band_array_index(measobj_eutra->
+																carrier_freq);
+		fdd_bands_indexD = emoai_get_fdd_dl_band_array_index(measobj_eutra->
+																carrier_freq);
+		fdd_bands_indexU = emoai_get_fdd_ul_band_array_index(measobj_eutra->
+																carrier_freq);
+		if (tdd_bands_index != -1) {
+			freqR = emoai_get_tdd_band_freq(tdd_bands_index, measobj_eutra->
+																carrier_freq);
+			band_bw = emoai_get_tdd_band_bw(tdd_bands_index);
+			max_band_freq = tdd_bands[tdd_bands_index].f_l + band_bw;
+			min_band_freq = tdd_bands[tdd_bands_index].f_l;
+		} else if (fdd_bands_indexD != -1) {
+			freqR = emoai_get_fdd_band_dl_freq(fdd_bands_indexD, measobj_eutra->
+																carrier_freq);
+			band_bw = emoai_get_fdd_band_bw(fdd_bands_indexD);
+			max_band_freq = fdd_bands_dl[fdd_bands_indexD].f_DLl + band_bw;
+			min_band_freq = fdd_bands_dl[fdd_bands_indexD].f_DLl;
+		} else if (fdd_bands_indexU != -1) {
+			freqR = emoai_get_fdd_band_ul_freq(fdd_bands_indexU, measobj_eutra->
+																carrier_freq);
+			band_bw = emoai_get_fdd_band_bw(fdd_bands_indexU);
+			max_band_freq = fdd_bands_ul[fdd_bands_indexU].f_ULl + band_bw;
+			min_band_freq = fdd_bands_ul[fdd_bands_indexU].f_ULl;
+		}
+		for (int i = 0; i < ue_supp_bands_n; i++) {
+			if ((tdd_bands_index != -1) &&
+					(ue_supp_bands[i] == eutra_tdd_bands[tdd_bands_index])) {
+				band_flag = 1;
+				break;
+			} else if ((fdd_bands_indexD != -1) &&
+					(ue_supp_bands[i] == eutra_fdd_bands[fdd_bands_indexD])) {
+				band_flag = 1;
+				break;
+			} else if ((fdd_bands_indexU != -1) &&
+					(ue_supp_bands[i] == eutra_fdd_bands[fdd_bands_indexU])) {
+				band_flag = 1;
+				break;
+			}
+		}
+		free(ue_supp_bands);
+		if (band_flag == 0) {
+			/* Measurement in unsupported band requested. */
+			return -1;
+		}
+		if (meas_bw_f[measobj_eutra->meas_bw] > band_bw) {
+			/* Requested measurement bandwidth cannot exceed maximum bandwidth
+			 * of the band.
+			 */
+			return -1;
+		} else if (
+			((freqR + (meas_bw_f[measobj_eutra->meas_bw] / 2)) > max_band_freq)
+										||
+			((freqR - (meas_bw_f[measobj_eutra->meas_bw] / 2)) < min_band_freq)
+																			) {
+			/* Requested measurement frequency range cannot go out of band.
+			 */
+			return -1;
+		}
+		/* Check the array size of cells for which measurements have to be
+		 * fetched. Size of the array cannot exceed 32 (3GPP).
+		*/
+		if (measobj_eutra->n_cells > 32) {
+			return -1;
+		}
+		/* Check the array size of cells to be blacklisted from measurements.
+		 * Size of the array cannot exceed 32 (3GPP).
+		*/
+		if (measobj_eutra->n_bkl_cells > 32) {
+			return -1;
+		}
+		/* Compare with each of the measurement object stored. */
+		RB_FOREACH(ctxt, rrc_meas_trigg_tree, &rrc_meas_t_head) {
+			int measObj_id = 0;
+			if (ctxt->m_obj->meas_obj_case ==
+										MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA) {
+				/* Validate and check whether measObj already exists. */
+				measObj_id = emoai_comp_EUTRA_measObj(measobj_eutra,
+													ctxt->m_obj->measobj_eutra);
+			}
 
-// 	RrcMeasReq *req;
+			if (measObj_id > 0) {
+				/* Measurement Objects are equal. So return MeasObj ID. */
+				return ctxt->m_obj->measobjid;
+			} else if (measObj_id == -1) {
+				/* Invalid parameters given in request. */
+				return -1;
+			}
+		}
+	}
+	/* Measurement Objects are not equal. */
+	return 0;
+}
 
-// 	/* RRC measurement for now supports only triggered event based replies. */
-// 	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_TE) {
-// 		/* Its a triggered event request. */
-// 		req = request->te->mrrc_meas->req;
-// 	} else {
-// 		goto error;
-// 	}
+int emoai_comp_EUTRA_repConf (RepConfEUTRA * req_rc, RepConfEUTRA * ctxt_rc) {
 
-// 	/* Check if UE is still active in the system. */
-// 	ue_id = find_UE_id(DEFAULT_ENB_ID, req->rnti);
-// 	if (ue_id < 0) {
-// 		goto req_error;
-// 	}
+	/* Return value meaning:
+	 * 0 -> reportConfig objects are not equal
+	 * -1 -> invalid reportConfig request
+	 * 1 -> reportConfig objects exists
+	 */
+	int ret = 1;
 
-// 	/* Make all the validation here before forming the header. */
+	if ((req_rc == NULL) || (ctxt_rc == NULL)) {
+		return -1;
+	}
 
-// 	Header *header;
-// 	/* Initialize header message. */
-// 	/* Assign the same transaction id as the request message. */
-// 	if (emoai_create_header(
-// 			request->head->b_id,
-// 			request->head->seq,
-// 			request->head->t_id,
-// 			&header) != 0)
-// 		goto error;
+	/* Two report configurations are not equal under following conditions. */
+	if ((req_rc->has_hysteresis == 1) &&
+								(req_rc->hysteresis != ctxt_rc->hysteresis)) {
+		return 0;
+	}
+	if ((req_rc->has_trigg_time == 1) &&
+								(req_rc->trigg_time != ctxt_rc->trigg_time)) {
+		return 0;
+	}
+	if ((req_rc->has_trigg_quant == 1) &&
+								(req_rc->trigg_quant != ctxt_rc->trigg_quant)) {
+		return 0;
+	}
+	if ((req_rc->has_report_quant == 1) &&
+							(req_rc->report_quant != ctxt_rc->report_quant)) {
+		return 0;
+	}
+	if ((req_rc->has_max_rep_cells == 1) &&
+							(req_rc->max_rep_cells != ctxt_rc->max_rep_cells)) {
+		return 0;
+	}
+	if ((req_rc->has_rep_interval == 1) &&
+							(req_rc->rep_interval != ctxt_rc->rep_interval)) {
+		return 0;
+	}
+	if ((req_rc->has_rep_amount == 1) &&
+								(req_rc->rep_amount != ctxt_rc->rep_amount)) {
+		return 0;
+	}
+	if ((req_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL)
+										&&
+		(ctxt_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL)
+										&&
+		(req_rc->periodical->purpose != ctxt_rc->periodical->purpose)) {
+		return 0;
+	} else if ((req_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A1)
+										&&
+			(ctxt_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A1)) {
 
-// 	/* Form the main Emage message here. */
-// 	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
-// 	emage_msg__init(*reply);
-// 	(*reply)->head = header;
-// 	/* Assign event type same as request message. */
-// 	(*reply)->event_types_case = request->event_types_case;
+		if ((req_rc->a1->a1_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP)
+										&&
+			(ctxt_rc->a1->a1_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP)
+										&&
+			(req_rc->a1->a1_threshold->rsrp !=
+											ctxt_rc->a1->a1_threshold->rsrp)) {
+			return 0;
+		}
+		if ((req_rc->a1->a1_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ)
+										&&
+			(ctxt_rc->a1->a1_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ)
+										&&
+			(req_rc->a1->a1_threshold->rsrq !=
+											ctxt_rc->a1->a1_threshold->rsrq)) {
+			return 0;
+		}
+	} else if ((req_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A2)
+										&&
+			(ctxt_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A2)) {
 
+		if ((req_rc->a2->a2_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP)
+										&&
+			(ctxt_rc->a2->a2_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP)
+										&&
+			(req_rc->a2->a2_threshold->rsrp !=
+											ctxt_rc->a2->a2_threshold->rsrp)) {
+			return 0;
+		}
+		if ((req_rc->a2->a2_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ)
+										&&
+			(ctxt_rc->a2->a2_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ)
+										&&
+			(req_rc->a2->a2_threshold->rsrq !=
+											ctxt_rc->a2->a2_threshold->rsrq)) {
+			return 0;
+		}
+	} else if ((req_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A3)
+										&&
+			(ctxt_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A3)) {
 
-// 	/* Form the UE RRC measurement configuration message. */
-// 	UeRrcMeasConf *mue_rrc_meas_conf = malloc(sizeof(UeRrcMeasConf));
-// 	ue_rrc_meas_conf__init(mue_rrc_meas_conf);
+		if (req_rc->a3->a3_offset != ctxt_rc->a3->a3_offset) {
+			return 0;
+		}
+		if (req_rc->a3->report_on_leave != ctxt_rc->a3->report_on_leave) {
+			return 0;
+		}
+	} else if ((req_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A4)
+										&&
+			(ctxt_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A4)) {
 
-// 	mue_rrc_meas_conf->ue_rrc_meas_conf_m_case =
-// 									UE_RRC_MEAS_CONF__UE_RRC_MEAS_CONF_M_REPL;
+		if ((req_rc->a4->a4_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP)
+										&&
+			(ctxt_rc->a4->a4_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP)
+										&&
+			(req_rc->a4->a4_threshold->rsrp !=
+											ctxt_rc->a4->a4_threshold->rsrp)) {
+			return 0;
+		}
+		if ((req_rc->a4->a4_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ)
+										&&
+			(ctxt_rc->a4->a4_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ)
+										&&
+			(req_rc->a4->a4_threshold->rsrq !=
+											ctxt_rc->a4->a4_threshold->rsrq)) {
+			return 0;
+		}
+	} else if ((req_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A5)
+										&&
+			(ctxt_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A5)) {
 
-// 	/* Form the UE RRC measurement configuration reply message. */
-// 	UeRrcMeasConfRepl *repl = malloc(sizeof(UeRrcMeasConfRepl));
-// 	ue_rrc_meas_conf_repl__init(repl);
+		if ((req_rc->a5->a5_threshold1->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP)
+										&&
+			(ctxt_rc->a5->a5_threshold1->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP)
+										&&
+			(req_rc->a5->a5_threshold1->rsrp !=
+											ctxt_rc->a5->a5_threshold1->rsrp)) {
+			return 0;
+		}
+		if ((req_rc->a5->a5_threshold1->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ)
+										&&
+			(ctxt_rc->a5->a5_threshold1->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ)
+										&&
+			(req_rc->a5->a5_threshold1->rsrq !=
+											ctxt_rc->a5->a5_threshold1->rsrq)) {
+			return 0;
+		}
+		if ((req_rc->a5->a5_threshold2->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP)
+										&&
+			(ctxt_rc->a5->a5_threshold2->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP)
+										&&
+			(req_rc->a5->a5_threshold2->rsrp !=
+											ctxt_rc->a5->a5_threshold2->rsrp)) {
+			return 0;
+		}
+		if ((req_rc->a5->a5_threshold2->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ)
+										&&
+			(ctxt_rc->a5->a5_threshold2->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRQ)
+										&&
+			(req_rc->a5->a5_threshold2->rsrq !=
+											ctxt_rc->a5->a5_threshold2->rsrq)) {
+			return 0;
+		}
+	}
 
+	return ret;
+}
 
-// 	/* Fill the RNTI. */
-// 	repl->rnti = req->rnti;
+int rrc_meas_val_trigg_repConf (
+	ueid_t ue_id,
+	uint32_t mo_freq,
+	ReportConfig * r_conf) {
 
-// 	/* Add the context at the last. */
-// 	ctxt = malloc(sizeof(struct rrc_meas_trigg));
-// 	ctxt->t_id = request->head->t_id;
-// 	ctxt->rnti = req->rnti;
-// 	rrc_m_conf_add_trigg(ctxt);
+	/* return value meaning:
+	 * 0 -> not equal
+	 * -1 -> error in request
+	 * number > 0 -> reportConfig exists and the number represents its ID
+	 */
 
-// 	req_error:
-// 		/* Failed outcome of request. */
-// 		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
-// 		return 0;
+	if (r_conf == NULL)
+		return -1;
 
-// }
+	struct rrc_meas_trigg *ctxt;
+	/* Only EUTRA measurements are supported now. */
+	if (r_conf->rep_conf_case == REPORT_CONFIG__REP_CONF_RC__EUTRA) {
+		/* Assign the requested report configuration to a variable. */
+		RepConfEUTRA *rc_eutra = r_conf->rc_eutra;
+		/* CC Id 0 is used for now, need to change this code in case of
+		 * multiple CCs.
+		 */
+		float operating_dl_f = emoai_get_operating_dl_freq(0);
+		float req_dl_f = 0.0;
+		int tdd_bands_index, fdd_bands_indexD, band_num = 0;
+		/* If the request event based measurements are A1 and A2, then request
+		 * is valid only in serving cell frequency.
+		 */
+		if ((rc_eutra->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A1) ||
+			(rc_eutra->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A2)) {
+			/* Get the frequency corresponding to EARFCN of requests message. */
+			tdd_bands_index = emoai_get_tdd_band_array_index(mo_freq);
+			if (tdd_bands_index != -1) {
+				req_dl_f = emoai_get_tdd_band_freq(tdd_bands_index, mo_freq);
+				band_num = eutra_tdd_bands[tdd_bands_index];
+			}
+			/* Check for FDD downlink frequency. */
+			fdd_bands_indexD = emoai_get_fdd_dl_band_array_index(mo_freq);
+			if (fdd_bands_indexD != -1) {
+				req_dl_f = emoai_get_fdd_band_dl_freq(fdd_bands_indexD,
+																	mo_freq);
+				band_num = eutra_fdd_bands[fdd_bands_indexD];
+			}
+			if (req_dl_f != operating_dl_f) {
+				return -1;
+			}
+		}
+		/* Check the validity of hysteresis value if it exists. */
+		if ((rc_eutra->has_hysteresis == 1) &&
+				((rc_eutra->hysteresis > 30) || (rc_eutra->hysteresis < 0))) {
+			/* Value of Hysteresis must be in range (0 - 30). */
+			return -1;
+		}
+		/* Check the validity of maximum number of cells to be measured. */
+		if ((rc_eutra->has_max_rep_cells == 1) &&
+			((rc_eutra->max_rep_cells > 8) || (rc_eutra->max_rep_cells < 0))) {
+			/* Value msut not exceed 8. Must be in range (0 - 8). */
+			return -1;
+		}
+		if (((rc_eutra->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A4) ||
+			(rc_eutra->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_A5)) &&
+			(emoai_is_A5A4_supp(ue_id) == 0)) {
+			/* A4 and A5 event based reporting not supported by UE. */
+			return -1;
+		}
+		/* Total number CGI measurements at any time = 1 only. */
+		int num_CGI_meas = 0;
+		/* Check UE support for periodic ref. signal and CGI measurements. */
+		if ((rc_eutra->conf__eutra_case ==
+									REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL)) {
+			/* CC Id 0 is used for now, need to change this code in case of
+			 * multiple CCs.
+			 */
+			int op_band = emoai_get_operating_band(0);
+			/* Intra-frequency periodic measurements. */
+			if ((op_band == band_num) &&
+						(emoai_is_intraF_refs_per_meas_supp(ue_id) == 0)) {
+				/* UE does not support it. */
+				return -1;
+			} else if ((op_band != band_num) &&
+						(emoai_is_interF_refs_per_meas_supp(ue_id) == 0)) {
+				/* Inter-frequency periodic measurements. */
+				/* UE does not support it. */
+				return -1;
+			}
+			if (rc_eutra->periodical->purpose ==
+								PERIODIC_REP_PURPOSE__PERRP_REPORT_CGI_INFO) {
+				num_CGI_meas = 1;
+			}
+		}
+		/* Compare with each of the report configuration object stored. */
+		RB_FOREACH(ctxt, rrc_meas_trigg_tree, &rrc_meas_t_head) {
+			int repConf_id = 0;
+			/* Only EUTRA measurements are supported now. */
+			if (ctxt->r_conf->rep_conf_case ==
+											REPORT_CONFIG__REP_CONF_RC__EUTRA) {
+				/* Validate and check whether reportConfig already exists. */
+				repConf_id = emoai_comp_EUTRA_repConf(rc_eutra,
+														ctxt->r_conf->rc_eutra);
+				/* Check for more than one CGI measurements. */
+				if ((rc_eutra->conf__eutra_case ==
+										REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL)
+											&&
+					(rc_eutra->periodical->purpose ==
+								PERIODIC_REP_PURPOSE__PERRP_REPORT_CGI_INFO)
+											&&
+					(num_CGI_meas > 0)) {
+					/* Total number CGI measurements at any time = 1 only. */
+					return -1;
+				}
+			}
+
+			if (repConf_id > 0) {
+				/* Report Configuration Objects are equal. So return its
+				 * reportConfig ID.
+				 */
+				return ctxt->r_conf->reportconfid;
+			} else if (repConf_id == -1) {
+				/* Invalid parameters given in request. */
+				return -1;
+			}
+		}
+	}
+
+	/* Report Configuration Objects are not equal. */
+	return 0;
+}
+
+int rrc_meas_trigg_update_measObj (int mo_id, MeasObject * m_obj) {
+	/* Get the measurement object stored. */
+	struct rrc_meas_trigg *ctxt;
+	RB_FOREACH(ctxt, rrc_meas_trigg_tree, &rrc_meas_t_head) {
+		if (ctxt->m_obj->measobjid == mo_id) {
+			break;
+		}
+	}
+	if (ctxt == NULL) {
+		goto error;
+	}
+
+	if (m_obj->meas_obj_case == MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA) {
+		MeasObjEUTRA *req_mo = m_obj->measobj_eutra;
+		MeasObjEUTRA *ctxt_mo = ctxt->m_obj->measobj_eutra;
+		ctxt_mo->meas_bw = req_mo->meas_bw;
+		/* Remove old version of cells. */
+		for (int i = 0; i < ctxt_mo->n_cells; i++) {
+			cells_to_measure__free_unpacked(ctxt_mo->cells[i], 0);
+		}
+		free(ctxt_mo->cells);
+		/* Remove old version of blacklist cells. */
+		for (int i = 0; i < ctxt_mo->n_bkl_cells; i++) {
+			blacklist_cells__free_unpacked(ctxt_mo->bkl_cells[i], 0);
+		}
+		free(ctxt_mo->bkl_cells);
+		/* Replace cells and blacklist cells list with that of request. */
+		ctxt_mo->n_cells = req_mo->n_cells;
+		if (ctxt_mo->n_cells > 0) {
+			ctxt_mo->cells = malloc(sizeof(*req_mo->cells));
+			memcpy(ctxt_mo->cells, req_mo->cells, sizeof(*req_mo->cells));
+		}
+		ctxt_mo->n_bkl_cells = req_mo->n_bkl_cells;
+		if (ctxt_mo->n_bkl_cells > 0) {
+			ctxt_mo->bkl_cells = malloc(sizeof(*req_mo->bkl_cells));
+			memcpy(
+				ctxt_mo->bkl_cells,
+				req_mo->bkl_cells,
+				sizeof(*req_mo->bkl_cells));
+		}
+	} else {
+		goto error;
+	}
+
+	return 0;
+
+	error:
+		EMLOG("Error in updating measurement object of the trigger context");
+		return -1;
+}
+
+int emoai_RRC_measurements (EmageMsg * request, EmageMsg ** reply) {
+
+	uint32_t ue_id;
+	struct rrc_meas_trigg *t_ctxt;
+	StatsReqStatus req_status = STATS_REQ_STATUS__SREQS_SUCCESS;
+	int repConf_id = 0, measObj_id = 0, meas_id = 0;
+
+	RrcMeasReq *req;
+	/* RRC measurement for now supports only triggered event based replies. */
+	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_TE) {
+		/* Its a triggered event request. */
+		req = request->te->mrrc_meas->req;
+	} else {
+		return -1;
+	}
+
+	/* Form the RRC measurements message. */
+	RrcMeas *mrrc_meas = malloc(sizeof(RrcMeas));
+	rrc_meas__init(mrrc_meas);
+	/* Set the type of RRC measurements as reply. */
+	mrrc_meas->rrc_meas_m_case = RRC_MEAS__RRC_MEAS_M_REPL;
+	/* Initialize RRC measurements reply message. */
+	RrcMeasRepl *repl = malloc(sizeof(RrcMeasRepl));
+	rrc_meas_repl__init(repl);
+	/* Set the RNTI of the UE. */
+	repl->rnti = req->rnti;
+
+	/* Check if UE is still active in the system. */
+	ue_id = find_UE_id(DEFAULT_ENB_ID, req->rnti);
+	if (ue_id < 0) {
+		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		goto req_error;
+	}
+
+	/* Make all the validation of the request message. */
+	measObj_id = rrc_meas_val_trigg_measObj(ue_id, req->m_obj);
+	if (measObj_id == -1) {
+		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		goto req_error;
+	}
+	if (req->m_obj->meas_obj_case == MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA) {
+		repConf_id = rrc_meas_val_trigg_repConf(
+										ue_id,
+										req->m_obj->measobj_eutra->carrier_freq,
+										req->r_conf);
+		if (repConf_id == -1) {
+			req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+			goto req_error;
+		}
+	} else {
+		/* Not supporting measurements other than EUTRA measurements. */
+		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		goto req_error;
+	}
+
+	/* Get the UE context which holds all the measurement configuration info. */
+	struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
+	/* Assign the measurement identifiers. */
+	for (int i = 0; i < MAX_MEAS_ID; i++) {
+		if (ue->ue_context.MeasId[i] == NULL) {
+			meas_id = i + 1;
+			break;
+		}
+	}
+	/* At this point no measurement slots are free. */
+	if (meas_id == 0) {
+		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		goto req_error;
+	}
+	/* Get measurement object id. */
+	if (measObj_id > 0) {
+		req->m_obj->measobjid = measObj_id;
+		/* Update the already existing trigger context.
+		 * The update procedure is only for measObj and not for reportConfig
+		 * becoz, multiple similar reportConfig can exist, but two measObj with
+		 * same EARFCN cannot exist (measObj limitation).
+		 */
+		if (rrc_meas_trigg_update_measObj(measObj_id, req->m_obj) < 0) {
+			req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+			goto req_error;
+		}
+	} else if (measObj_id == 0) {
+		for (int i = 0; i < MAX_MEAS_OBJ; i++) {
+			if (ue->ue_context.MeasObj[i] == NULL) {
+				measObj_id = i + 1;
+				req->m_obj->measobjid = measObj_id;
+				break;
+			}
+		}
+	}
+	/* At this point no measurement object slots are free. */
+	if (measObj_id == 0) {
+		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		goto req_error;
+	}
+	/* Get report configuration object id. */
+	if (repConf_id > 0) {
+		req->r_conf->reportconfid = repConf_id;
+	} else if (repConf_id == 0) {
+		for (int i = 0; i < MAX_MEAS_CONFIG; i++) {
+			if (ue->ue_context.ReportConfig[i] == NULL) {
+				repConf_id = i + 1;
+				req->r_conf->reportconfid = repConf_id;
+				break;
+			}
+		}
+	}
+	/* At this point no report configuration object slots are free. */
+	if (repConf_id == 0) {
+		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		goto req_error;
+	}
+
+	/* Load default values for certain fields in report config. */
+	/* Only EUTRA measurements are supported now. */
+	if (req->r_conf->rep_conf_case == REPORT_CONFIG__REP_CONF_RC__EUTRA) {
+		if (!req->r_conf->rc_eutra->has_hysteresis) {
+			/* By default set hysteresis value to 0. */
+			req->r_conf->rc_eutra->hysteresis = 0;
+		}
+		if (!req->r_conf->rc_eutra->has_trigg_quant) {
+			/* By default trigger based on RSRP. */
+			req->r_conf->rc_eutra->trigg_quant = TRIGGER_QUANTITY__TRIGQ_RSRP;
+		}
+		if (!req->r_conf->rc_eutra->has_report_quant) {
+			/* By default report both RSRP and RSRQ. */
+			req->r_conf->rc_eutra->report_quant = REPORT_QUANTITY__REPQ_BOTH;
+		}
+		if (!req->r_conf->rc_eutra->has_max_rep_cells) {
+			/* By default report for only two cells. */
+			req->r_conf->rc_eutra->max_rep_cells = 2;
+		}
+		if (!req->r_conf->rc_eutra->has_rep_interval) {
+			/* By default report every 5 secs. */
+			req->r_conf->rc_eutra->rep_interval =
+												REPORT_INTERVAL__REPINT_ms5120;
+		}
+		if (!req->r_conf->rc_eutra->has_rep_amount) {
+			/* By default report infinite number of measurements. */
+			req->r_conf->rc_eutra->rep_amount = REPORT_AMOUNT__REPAMT_infinity;
+		}
+	} else {
+		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		goto req_error;
+	}
+
+	/* CALL RRC Measurement reconfiguration procedure. */
+	if (emoai_RRC_meas_reconf(
+							req->rnti,
+							meas_id,
+							-1,
+							req->m_obj,
+							req->r_conf) < 0) {
+		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		goto req_error;
+	}
+
+	/* Add the context to rrc measurement trigger context tree. */
+	t_ctxt = malloc(sizeof(struct rrc_meas_trigg));
+	t_ctxt->t_id = request->head->t_id;
+	t_ctxt->rnti = req->rnti;
+	t_ctxt->measId = meas_id;
+	t_ctxt->m_obj = malloc(sizeof(*req->m_obj));
+	memcpy(t_ctxt->m_obj, req->m_obj, sizeof(*req->m_obj));
+	t_ctxt->r_conf = malloc(sizeof(*req->r_conf));
+	memcpy(t_ctxt->r_conf, req->r_conf, sizeof(*req->r_conf));
+	rrc_meas_add_trigg(t_ctxt);
+
+req_error:
+	/* Set the request status. Success or failure. */
+	repl->status = req_status;
+
+	/* Attach the RRC measurement reply message to RRC measurements message. */
+	mrrc_meas->repl = repl;
+	/* Form message header. */
+	Header *header;
+	/* Initialize header message. */
+	/* Assign the same transaction id as the request message. */
+	if (emoai_create_header(
+			request->head->b_id,
+			request->head->seq,
+			request->head->t_id,
+			&header) != 0) {
+		return -1;
+	}
+	/* Form the main Emage message here. */
+	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
+	emage_msg__init(*reply);
+	(*reply)->head = header;
+	/* Assign event type same as request message. */
+	(*reply)->event_types_case = request->event_types_case;
+	/* RRC measurement for now supports only triggered event based replies. */
+	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_TE) {
+		/* Its a triggered event reply. */
+		TriggerEvent *te = malloc(sizeof(TriggerEvent));
+		trigger_event__init(te);
+
+		/* Fill the trigger event message. */
+		te->events_case = TRIGGER_EVENT__EVENTS_M_RRC_MEAS;
+		/* Attach RRC measurement message to triggered event message. */
+		te->mrrc_meas = mrrc_meas;
+		(*reply)->te = te;
+	} else {
+		return -1;
+	}
+
+	/* Send the response to controller. */
+	em_send(emoai_get_b_id(), *reply);
+
+	return 0;
+}
+
+int emoai_store_rrc_eNB_mui (mui_t * mui) {
+	emoai_rrc_eNB_mui = mui;
+	return 0;
+}
+
+int emoai_store_UE_RRC_pctxt (uint32_t rnti, protocol_ctxt_t * ctxt_pP) {
+
+	int m;
+	int num_ues = emoai_get_num_ues();
+	for (m = 0; m < num_ues; m++) {
+		if (&UE_RRC_proto_ctxt_list[m]) {
+			if (UE_RRC_proto_ctxt_list[m].rnti == rnti) {
+				break;
+			}
+		} else {
+			UE_RRC_proto_ctxt_list = realloc(UE_RRC_proto_ctxt_list,
+									num_ues * sizeof(struct UE_RRC_proto_ctxt));
+			UE_RRC_proto_ctxt_list[m].rnti = rnti;
+			UE_RRC_proto_ctxt_list[m].UE_RRC_ctxt = ctxt_pP;
+			break;
+		}
+	}
+	return 0;
+}
+
+int emoai_rem_UE_RRC_pctxt (uint32_t rnti) {
+
+	int ret = -1, m, j;
+	int num_ues = emoai_get_num_ues();
+	for (m = 0; m < num_ues; m++){
+		if (&UE_RRC_proto_ctxt_list[m] &&
+									UE_RRC_proto_ctxt_list[m].rnti == rnti) {
+			for (j = m; j < num_ues - 1; j++) {
+				UE_RRC_proto_ctxt_list[j] = UE_RRC_proto_ctxt_list[j+1];
+			}
+			ret = 0;
+			break;
+		}
+	}
+	return ret;
+}
+
+protocol_ctxt_t* emoai_get_UE_RRC_pctxt (uint32_t rnti) {
+
+	int m;
+	for (m = 0;m < emoai_get_num_ues(); m++) {
+		if (&UE_RRC_proto_ctxt_list[m] &&
+									UE_RRC_proto_ctxt_list[m].rnti == rnti) {
+			return UE_RRC_proto_ctxt_list[m].UE_RRC_ctxt;
+		}
+	}
+	return NULL;
+}
+
+int emoai_RRC_meas_reconf (
+	uint32_t rnti,
+	int measId_add,
+	int measId_rem,
+	MeasObject * m_obj,
+	ReportConfig * r_conf) {
+
+	int m;
+	uint8_t buffer[RRC_BUF_SIZE];
+	uint16_t size;
+	uint32_t ue_id;
+	protocol_ctxt_t *ctxt;
+
+	MeasIdToRemoveList_t *mi_rem_l = NULL;
+	MeasObjectToRemoveList_t *mo_rem_l = NULL;
+	ReportConfigToRemoveList_t *rc_rem_l = NULL;
+	MeasId_t *mi_rem = NULL;
+	MeasObjectId_t *mo_rem = NULL;
+	ReportConfigId_t *rc_rem = NULL;
+
+	MeasIdToAddModList_t *mi_add_l = NULL;
+	MeasObjectToAddModList_t *mo_add_l = NULL;
+	ReportConfigToAddModList_t *rc_add_l = NULL;
+	MeasIdToAddMod_t *mi_add = NULL;
+	MeasObjectToAddMod_t *mo_add = NULL;
+	ReportConfigToAddMod_t *rc_add = NULL;
+
+	QuantityConfig_t *quantityConfig = NULL;
+	MeasGapConfig_t *measGapConfig = NULL;
+
+	/* Check if UE is still active in the system. */
+	ue_id = find_UE_id(DEFAULT_ENB_ID, rnti);
+	if (ue_id < 0) {
+		EMLOG("Reached point 20! ");
+		goto error;
+	}
+
+	ctxt = emoai_get_UE_RRC_pctxt(rnti);
+	/* Get the UE context which holds all the measurement configuration info. */
+	struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
+
+	if (ue == NULL) {
+		EMLOG("Reached point 19! ");
+		goto error;
+	}
+
+	/* No need to modify the DRB which is already established.
+	 * Do not modify DRB0.
+	*/
+	ue->ue_context.DRB_config_action[0] = CONFIG_ACTION_NULL;
+
+	if (measId_rem > 0) {
+		/* A measurement needs to be removed. */
+		/* In UE context, all the measurement ids are stored sequentially. */
+		if (ue->ue_context.MeasId[measId_rem - 1] == NULL) {
+			EMLOG("Reached point 17! ");
+			goto error;
+		}
+		int measObj_id_rem = ue->ue_context.MeasId[measId_rem - 1]->
+																measObjectId;
+		int repConf_id_rem = ue->ue_context.MeasId[measId_rem - 1]->
+																reportConfigId;
+		/* Add this measurement id to the "to be removed" list. */
+		mi_rem_l = calloc(1, sizeof(*mi_rem_l));
+		mi_rem = calloc(1, sizeof(*mi_rem));
+		*mi_rem = measId_rem;
+		ASN_SEQUENCE_ADD(&mi_rem_l->list, mi_rem);
+		/* Free the measId object in UE context. */
+		ASN_STRUCT_FREE(asn_DEF_MeasIdToAddMod,
+										ue->ue_context.MeasId[measId_rem - 1]);
+		ue->ue_context.MeasId[measId_rem - 1] = NULL;
+		/* Check if measObj and repConf corresponding to removed measId is
+		 * used by other measurements.
+		 */
+		int mo_present = 0, rc_present = 0;
+		for (int i = 0; i < MAX_MEAS_ID; i++) {
+			if (ue->ue_context.MeasId[i] != NULL) {
+				if (ue->ue_context.MeasId[i]->measObjectId == measObj_id_rem) {
+					++mo_present;
+				}
+				if (ue->ue_context.MeasId[i]->reportConfigId == repConf_id_rem)
+				{
+					++rc_present;
+				}
+			}
+		}
+		if (mo_present == 0) {
+			/* Add this measurement object to be removed list. */
+			mo_rem_l = calloc(1, sizeof(*mo_rem_l));
+			mo_rem = calloc(1, sizeof(*mo_rem));
+			*mo_rem = measObj_id_rem;
+			ASN_SEQUENCE_ADD(&mo_rem_l->list, mo_rem);
+			/* Free MeasObj in UE context. */
+			ASN_STRUCT_FREE(asn_DEF_MeasObjectToAddMod,
+									ue->ue_context.MeasObj[measObj_id_rem - 1]);
+			ue->ue_context.MeasObj[measObj_id_rem - 1] = NULL;
+		}
+		if (rc_present == 0) {
+			/* Add this report configuration to be removed list. */
+			rc_rem_l = calloc(1, sizeof(*rc_rem_l));
+			rc_rem = calloc(1, sizeof(*rc_rem));
+			*rc_rem = repConf_id_rem;
+			ASN_SEQUENCE_ADD(&rc_rem_l->list, rc_rem);
+			/* Free reportConfig in UE context. */
+			ASN_STRUCT_FREE(asn_DEF_ReportConfigToAddMod,
+							ue->ue_context.ReportConfig[repConf_id_rem - 1]);
+			ue->ue_context.ReportConfig[repConf_id_rem - 1] = NULL;
+		}
+	}
+	else if (measId_add > 0) {
+		/* A measurement needs to be added. */
+		if ((m_obj == NULL) || (r_conf == NULL)) {
+			goto error;
+		}
+		/* Add this measurement id to the "to be added" list. */
+		mi_add_l = calloc(1, sizeof(*mi_add_l));
+		mi_add = calloc(1, sizeof(*mi_add));
+		mi_add->measId = measId_add;
+		mi_add->measObjectId = m_obj->measobjid;
+		mi_add->reportConfigId = r_conf->reportconfid;
+		ASN_SEQUENCE_ADD(&mi_add_l->list, mi_add);
+		/* Update the UE context with this measurement id objecct. */
+		ue->ue_context.MeasId[measId_add - 1] = mi_add;
+		/* Measurement Object to add. */
+		mo_add_l = calloc(1, sizeof(*mo_add_l));
+		mo_add = calloc(1, sizeof(*mo_add));
+		mo_add->measObjectId = m_obj->measobjid;
+		/* EUTRA measurement Object. */
+		if (m_obj->meas_obj_case == MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA) {
+			MeasObjectEUTRA_t *measObjectEUTRA = &mo_add->measObject.choice.
+															measObjectEUTRA;
+			mo_add->measObject.present =
+						MeasObjectToAddMod__measObject_PR_measObjectEUTRA;
+
+			measObjectEUTRA->carrierFreq = m_obj->measobj_eutra->carrier_freq;
+			measObjectEUTRA->allowedMeasBandwidth = m_obj->measobj_eutra->
+																		meas_bw;
+			measObjectEUTRA->presenceAntennaPort1 = 1;
+			measObjectEUTRA->neighCellConfig.buf = calloc(1, sizeof(uint8_t));
+			measObjectEUTRA->neighCellConfig.buf[0] = 0;
+			measObjectEUTRA->neighCellConfig.size = 1;
+			measObjectEUTRA->neighCellConfig.bits_unused = 6;
+			measObjectEUTRA->offsetFreq = NULL;
+			if (m_obj->measobj_eutra->n_cells > 0) {
+				measObjectEUTRA->cellForWhichToReportCGI =
+														calloc(1, sizeof(long));
+				*measObjectEUTRA->cellForWhichToReportCGI =
+									m_obj->measobj_eutra->cells[0]->phy_cell_id;
+
+				/* Remove exisiting set of cells if they exist. */
+				measObjectEUTRA->cellsToRemoveList =
+											calloc(1, sizeof(CellIndexList_t));
+				CellIndexList_t *cells_rem_l =
+											measObjectEUTRA->cellsToRemoveList;
+				CellIndex_t *cell_r = NULL;
+				for (m = 0; m < 32; m++) {
+					cell_r = calloc(1, sizeof(*cell_r));
+					*cell_r = m + 1;
+					ASN_SEQUENCE_ADD(&cells_rem_l->list, cell_r);
+				}
+				/* Add the cells whose measurements are needed. */
+				measObjectEUTRA->cellsToAddModList =
+										calloc(1, sizeof(CellsToAddModList_t));
+				CellsToAddModList_t *cells = measObjectEUTRA->cellsToAddModList;
+				CellsToAddMod_t *cell = NULL;
+				for (m = 0; m < m_obj->measobj_eutra->n_cells; m++) {
+					cell = calloc(1, sizeof(*cell));
+					cell->cellIndex = m + 1;
+					cell->physCellId = m_obj->measobj_eutra->
+														cells[m]->phy_cell_id;
+					if (m_obj->measobj_eutra->cells[m]->has_offset_range) {
+						cell->cellIndividualOffset = m_obj->measobj_eutra->
+														cells[m]->offset_range;
+					} else {
+						cell->cellIndividualOffset = Q_OFFSET_RANGE__QOR_dB0;
+					}
+					ASN_SEQUENCE_ADD(&cells->list, cell);
+				}
+			}
+			if (m_obj->measobj_eutra->n_bkl_cells > 0) {
+				/* Remove exisiting set of blacklist cells if they exist. */
+				measObjectEUTRA->blackCellsToRemoveList =
+											calloc(1, sizeof(CellIndexList_t));
+				CellIndexList_t *bcells_rem_l =
+										measObjectEUTRA->blackCellsToRemoveList;
+				CellIndex_t *bcell_r = NULL;
+				for (m = 0; m < 32; m++) {
+					bcell_r = calloc(1, sizeof(*bcell_r));
+					*bcell_r = m + 1;
+					ASN_SEQUENCE_ADD(&bcells_rem_l->list, bcell_r);
+				}
+				/* Add the cells whose measurements are not needed. */
+				measObjectEUTRA->blackCellsToAddModList =
+									calloc(1, sizeof(BlackCellsToAddModList_t));
+				BlackCellsToAddModList_t *bcells = measObjectEUTRA->
+														blackCellsToAddModList;
+				BlackCellsToAddMod_t *bcell = NULL;
+				for (m = 0; m < m_obj->measobj_eutra->n_bkl_cells; m++) {
+					bcell = calloc(1, sizeof(*bcell));
+					bcell->cellIndex = m + 1;
+					bcell->physCellIdRange.start = m_obj->measobj_eutra->
+														bkl_cells[m]->start_pci;
+					bcell->physCellIdRange.range = calloc(1, sizeof(long));
+					if (m_obj->measobj_eutra->bkl_cells[m]->has_range) {
+						*bcell->physCellIdRange.range = m_obj->measobj_eutra->
+															bkl_cells[m]->range;
+					} else {
+						*bcell->physCellIdRange.range = PCI_RANGE__PCIR_n4;
+					}
+					ASN_SEQUENCE_ADD(&bcells->list, bcell);
+				}
+			}
+
+			ASN_SEQUENCE_ADD(&mo_add_l->list, mo_add);
+		} else {
+			goto error;
+		}
+		/* Check if measObj already exists, if not add it. */
+		if (ue->ue_context.MeasObj[m_obj->measobjid - 1] != NULL) {
+			/* Free MeasObj in UE context. */
+			ASN_STRUCT_FREE(asn_DEF_MeasObjectToAddMod,
+								ue->ue_context.MeasObj[m_obj->measobjid - 1]);
+		}
+		/* Update the contents of MeasObj in UE context. */
+		ue->ue_context.MeasObj[m_obj->measobjid - 1] = mo_add;
+
+		/* Report Configuration Object to add. */
+		rc_add_l = calloc(1, sizeof(*rc_add_l));
+		rc_add = calloc(1, sizeof(*rc_add));
+		rc_add->reportConfigId = r_conf->reportconfid;
+		/* EUTRA report configuration Object. */
+		if (r_conf->rep_conf_case == REPORT_CONFIG__REP_CONF_RC__EUTRA) {
+			ReportConfigEUTRA_t *reportConfigEUTRA = &rc_add->reportConfig.
+													choice.reportConfigEUTRA;
+			rc_add->reportConfig.present =
+						ReportConfigToAddMod__reportConfig_PR_reportConfigEUTRA;
+			switch (r_conf->rc_eutra->conf__eutra_case) {
+	case REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL:
+		reportConfigEUTRA->triggerType.present =
+								ReportConfigEUTRA__triggerType_PR_periodical;
+		reportConfigEUTRA->triggerType.choice.periodical.purpose =
+										r_conf->rc_eutra->periodical->purpose;
+		break;
+	case REP_CONF__EUTRA__CONF__EUTRA_A1:
+		reportConfigEUTRA->triggerType.present =
+										ReportConfigEUTRA__triggerType_PR_event;
+		reportConfigEUTRA->triggerType.choice.event.eventId.present =
+					ReportConfigEUTRA__triggerType__event__eventId_PR_eventA1;
+
+		struct ReportConfigEUTRA__triggerType__event__eventId__eventA1 *eA1;
+		eA1 = &reportConfigEUTRA->triggerType.choice.event.eventId.choice.
+																		eventA1;
+		if (r_conf->rc_eutra->a1->a1_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP) {
+			eA1->a1_Threshold.present = ThresholdEUTRA_PR_threshold_RSRP;
+			eA1->a1_Threshold.choice.threshold_RSRP = r_conf->rc_eutra->a1->
+															a1_threshold->rsrp;
+		} else {
+			eA1->a1_Threshold.present = ThresholdEUTRA_PR_threshold_RSRQ;
+			eA1->a1_Threshold.choice.threshold_RSRQ = r_conf->rc_eutra->a1->
+															a1_threshold->rsrq;
+		}
+		break;
+	case REP_CONF__EUTRA__CONF__EUTRA_A2:
+		reportConfigEUTRA->triggerType.present =
+										ReportConfigEUTRA__triggerType_PR_event;
+		reportConfigEUTRA->triggerType.choice.event.eventId.present =
+					ReportConfigEUTRA__triggerType__event__eventId_PR_eventA2;
+
+		struct ReportConfigEUTRA__triggerType__event__eventId__eventA2 *eA2;
+		eA2 = &reportConfigEUTRA->triggerType.choice.event.eventId.choice.
+																		eventA2;
+		if (r_conf->rc_eutra->a2->a2_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP) {
+			eA2->a2_Threshold.present = ThresholdEUTRA_PR_threshold_RSRP;
+			eA2->a2_Threshold.choice.threshold_RSRP = r_conf->rc_eutra->a2->
+															a2_threshold->rsrp;
+		} else {
+			eA2->a2_Threshold.present = ThresholdEUTRA_PR_threshold_RSRQ;
+			eA2->a2_Threshold.choice.threshold_RSRQ = r_conf->rc_eutra->a2->
+															a2_threshold->rsrq;
+		}
+		break;
+	case REP_CONF__EUTRA__CONF__EUTRA_A3:
+		reportConfigEUTRA->triggerType.present =
+										ReportConfigEUTRA__triggerType_PR_event;
+		reportConfigEUTRA->triggerType.choice.event.eventId.present =
+					ReportConfigEUTRA__triggerType__event__eventId_PR_eventA3;
+
+		struct ReportConfigEUTRA__triggerType__event__eventId__eventA3 *eA3;
+		eA3 = &reportConfigEUTRA->triggerType.choice.event.eventId.choice.
+																		eventA3;
+		eA3->a3_Offset = r_conf->rc_eutra->a3->a3_offset;
+		if (r_conf->rc_eutra->a3->has_report_on_leave) {
+			eA3->reportOnLeave = 1;
+		} else {
+			eA3->reportOnLeave = 0;
+		}
+		break;
+	case REP_CONF__EUTRA__CONF__EUTRA_A4:
+		reportConfigEUTRA->triggerType.present =
+										ReportConfigEUTRA__triggerType_PR_event;
+		reportConfigEUTRA->triggerType.choice.event.eventId.present =
+					ReportConfigEUTRA__triggerType__event__eventId_PR_eventA4;
+
+		struct ReportConfigEUTRA__triggerType__event__eventId__eventA4 *eA4;
+		eA4 = &reportConfigEUTRA->triggerType.choice.event.eventId.choice.
+																		eventA4;
+		if (r_conf->rc_eutra->a4->a4_threshold->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP) {
+			eA4->a4_Threshold.present = ThresholdEUTRA_PR_threshold_RSRP;
+			eA4->a4_Threshold.choice.threshold_RSRP = r_conf->rc_eutra->a4->
+															a4_threshold->rsrp;
+		} else {
+			eA4->a4_Threshold.present = ThresholdEUTRA_PR_threshold_RSRQ;
+			eA4->a4_Threshold.choice.threshold_RSRQ = r_conf->rc_eutra->a4->
+															a4_threshold->rsrq;
+		}
+		break;
+	case REP_CONF__EUTRA__CONF__EUTRA_A5:
+		reportConfigEUTRA->triggerType.present =
+										ReportConfigEUTRA__triggerType_PR_event;
+		reportConfigEUTRA->triggerType.choice.event.eventId.present =
+					ReportConfigEUTRA__triggerType__event__eventId_PR_eventA5;
+
+		struct ReportConfigEUTRA__triggerType__event__eventId__eventA5 *eA5;
+		eA5 = &reportConfigEUTRA->triggerType.choice.event.eventId.choice.
+																		eventA5;
+		if (r_conf->rc_eutra->a5->a5_threshold1->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP) {
+			eA5->a5_Threshold1.present = ThresholdEUTRA_PR_threshold_RSRP;
+			eA5->a5_Threshold1.choice.threshold_RSRP = r_conf->rc_eutra->a5->
+															a5_threshold1->rsrp;
+		} else {
+			eA5->a5_Threshold1.present = ThresholdEUTRA_PR_threshold_RSRQ;
+			eA5->a5_Threshold1.choice.threshold_RSRQ = r_conf->rc_eutra->a5->
+															a5_threshold1->rsrq;
+		}
+		if (r_conf->rc_eutra->a5->a5_threshold2->threshold_case ==
+											THRESHOLD__EUTRA__THRESHOLD_RSRP) {
+			eA5->a5_Threshold2.present = ThresholdEUTRA_PR_threshold_RSRP;
+			eA5->a5_Threshold2.choice.threshold_RSRP = r_conf->rc_eutra->a5->
+															a5_threshold2->rsrp;
+		} else {
+			eA5->a5_Threshold2.present = ThresholdEUTRA_PR_threshold_RSRQ;
+			eA5->a5_Threshold2.choice.threshold_RSRQ = r_conf->rc_eutra->a5->
+															a5_threshold2->rsrq;
+		}
+		break;
+	default:
+		goto error;
+		break;
+			}
+
+			/* Fill remaining report cofiguration parameters. */
+			if (r_conf->rc_eutra->has_hysteresis &&
+				(r_conf->rc_eutra->conf__eutra_case !=
+									REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL)) {
+				reportConfigEUTRA->triggerType.choice.event.hysteresis =
+												r_conf->rc_eutra->hysteresis;
+			}
+			if (r_conf->rc_eutra->has_trigg_time &&
+				(r_conf->rc_eutra->conf__eutra_case !=
+									REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL)) {
+				reportConfigEUTRA->triggerType.choice.event.timeToTrigger =
+												r_conf->rc_eutra->trigg_time;
+			}
+			if (r_conf->rc_eutra->has_trigg_quant) {
+				reportConfigEUTRA->triggerQuantity =
+												r_conf->rc_eutra->trigg_quant;
+			}
+			if (r_conf->rc_eutra->has_report_quant) {
+				reportConfigEUTRA->reportQuantity =
+												r_conf->rc_eutra->report_quant;
+			}
+			if (r_conf->rc_eutra->has_max_rep_cells) {
+				reportConfigEUTRA->maxReportCells =
+												r_conf->rc_eutra->max_rep_cells;
+			}
+			if (r_conf->rc_eutra->has_rep_interval) {
+				reportConfigEUTRA->reportInterval =
+												r_conf->rc_eutra->rep_interval;
+			}
+			if (r_conf->rc_eutra->has_rep_amount) {
+				reportConfigEUTRA->reportAmount = r_conf->rc_eutra->rep_amount;
+			}
+
+			ASN_SEQUENCE_ADD(&rc_add_l->list, rc_add);
+			/* Check if reportConfig already exists, if not add it. */
+			if (ue->ue_context.ReportConfig[r_conf->reportconfid - 1] != NULL) {
+				/* Free ReportConfig in UE context. */
+				ASN_STRUCT_FREE(asn_DEF_ReportConfigToAddMod,
+						ue->ue_context.ReportConfig[r_conf->reportconfid - 1]);
+			}
+			/* Update the contents of Report Config in UE context. */
+			ue->ue_context.ReportConfig[r_conf->reportconfid - 1] = rc_add;
+		} else {
+			goto error;
+		}
+	} else {
+		goto error;
+	}
+	/* Load the measurement gap configuration stored in UE context. */
+	measGapConfig = ue->ue_context.measGapConfig;
+	/* Load the quantity configuration stored in UE context. */
+	quantityConfig = ue->ue_context.QuantityConfig;
+
+	memset(buffer, 0, RRC_BUF_SIZE);
+
+	size = do_RRCConnectionReconfiguration(
+					ctxt,
+					buffer,
+					rrc_eNB_get_next_transaction_identifier(ctxt->module_id),
+					(SRB_ToAddModList_t*)NULL,
+					(DRB_ToAddModList_t*)NULL,
+					(DRB_ToReleaseList_t*)NULL,
+					(struct SPS_Config*)NULL,
+#ifdef EXMIMO_IOT
+					NULL, NULL, NULL, NULL,NULL,
+					#else
+					NULL,
+					mo_add_l,
+					mo_rem_l,
+					(ReportConfigToAddModList_t*)rc_add_l,
+					rc_rem_l,
+					quantityConfig,
+					mi_add_l,
+					mi_rem_l,
+#endif
+					NULL,
+					measGapConfig,
+					NULL,
+					NULL,
+					NULL,
+					NULL,
+					NULL
+#ifdef Rel10
+					,(SCellToAddMod_r10_t*)NULL
+#endif
+					);
+
+	MSC_LOG_TX_MESSAGE(
+		MSC_RRC_ENB,
+		MSC_RRC_UE,
+		buffer,
+		size,
+		MSC_AS_TIME_FMT" rrcConnectionReconfiguration UE %x MUI %d size %u",
+		MSC_AS_TIME_ARGS(ctxt),
+		ue_context_pP->ue_context.rnti,
+		*emoai_rrc_eNB_mui,
+		size);
+
+	rrc_data_req(
+		ctxt,
+		DCCH,
+		*emoai_rrc_eNB_mui++,
+		SDU_CONFIRM_NO,
+		size,
+		buffer,
+		PDCP_TRANSMISSION_MODE_CONTROL);
+
+	return 0;
+
+error:
+	EMLOG("Error in reconfiguration of UE RRC measurements! ");
+	return -1;
+}
+
+int rrc_meas_req (uint32_t * rnti) {
+	/* Initialize the request message. */
+	EmageMsg * request = (EmageMsg *) malloc(sizeof(EmageMsg));
+	emage_msg__init(request);
+
+	Header *header;
+	/* Initialize header message. */
+	/* seq field of header is updated in agent. */
+	if (emoai_create_header(
+			emoai_get_b_id(),
+			0,
+			0,
+			&header) != 0)
+		return -1;
+
+	request->head = header;
+	request->event_types_case = EMAGE_MSG__EVENT_TYPES_TE;
+
+	TriggerEvent *te = malloc(sizeof(TriggerEvent));
+	trigger_event__init(te);
+
+	/* Fill the trigger event message. */
+	te->events_case = TRIGGER_EVENT__EVENTS_M_RRC_MEAS;
+	te->action = EVENT_ACTION__EA_ADD;
+	/* Form the UE RRC measurement message. */
+	RrcMeas *mrrc_meas = malloc(sizeof(RrcMeas));
+	rrc_meas__init(mrrc_meas);
+
+	mrrc_meas->rrc_meas_m_case = RRC_MEAS__RRC_MEAS_M_REQ;
+
+	/* Form the UE RRC measurement request message. */
+	RrcMeasReq *req = malloc(sizeof(RrcMeasReq));
+	rrc_meas_req__init(req);
+	/* Set the RNTI of the UE. */
+	req->rnti = *rnti;
+	req->rat = RAT_TYPE__RAT_EUTRA;
+
+	MeasObject *m_obj = malloc(sizeof(*m_obj));
+	meas_object__init(m_obj);
+	m_obj->meas_obj_case = MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA;
+	MeasObjEUTRA *measobj_eutra = malloc(sizeof(*measobj_eutra));
+	meas_obj__eutra__init(measobj_eutra);
+	measobj_eutra->has_carrier_freq = 1;
+	measobj_eutra->carrier_freq = 6400;
+
+	measobj_eutra->has_meas_bw = 1;
+	measobj_eutra->meas_bw = ALLOWED_MEAS_BW__AMBW_50;
+
+	measobj_eutra->n_cells = 3;
+	CellsToMeasure **cells = NULL;
+	if (measobj_eutra->n_cells > 2) {
+		cells = malloc(measobj_eutra->n_cells * sizeof(*cells));
+		for (int i = 0; i < measobj_eutra->n_cells; i++) {
+			cells[i] = malloc(sizeof(**cells));
+			cells_to_measure__init(cells[i]);
+		}
+		cells[0]->has_phy_cell_id = 1;
+		cells[0]->phy_cell_id = 206;
+		cells[0]->has_offset_range = 1;
+		cells[0]->offset_range = Q_OFFSET_RANGE__QOR_dB0;
+		cells[1]->has_phy_cell_id = 1;
+		cells[1]->phy_cell_id = 198;
+		cells[1]->has_offset_range = 1;
+		cells[1]->offset_range = Q_OFFSET_RANGE__QOR_dB0;
+		cells[2]->has_phy_cell_id = 1;
+		cells[2]->phy_cell_id = 15;
+		cells[2]->has_offset_range = 1;
+		cells[2]->offset_range = Q_OFFSET_RANGE__QOR_dB0;
+		measobj_eutra->cells = cells;
+	}
+
+	measobj_eutra->n_bkl_cells = 1;
+	BlacklistCells **bkl_cells = NULL;
+	if (measobj_eutra->n_bkl_cells > 0) {
+		bkl_cells = malloc(measobj_eutra->n_bkl_cells * sizeof(*bkl_cells));
+		for (int i = 0; i < measobj_eutra->n_bkl_cells; i++) {
+			bkl_cells[i] = malloc(sizeof(**bkl_cells));
+			blacklist_cells__init(bkl_cells[i]);
+		}
+		bkl_cells[0]->has_start_pci = 1;
+		bkl_cells[0]->start_pci = 206;
+		bkl_cells[0]->has_range = 1;
+		bkl_cells[0]->range = PCI_RANGE__PCIR_n4;
+		measobj_eutra->bkl_cells = bkl_cells;
+	}
+
+	m_obj->measobj_eutra = measobj_eutra;
+	req->m_obj = m_obj;
+
+	ReportConfig *r_conf = malloc(sizeof(*r_conf));
+	report_config__init(r_conf);
+	r_conf->rep_conf_case = REPORT_CONFIG__REP_CONF_RC__EUTRA;
+	RepConfEUTRA *rc_eutra = malloc(sizeof(*rc_eutra));
+	rep_conf__eutra__init(rc_eutra);
+	rc_eutra->has_hysteresis = 1;
+	rc_eutra->hysteresis = 0;
+	rc_eutra->has_trigg_time = 1;
+	rc_eutra->trigg_time = TIME_TO_TRIGGER__TTRIG_ms0;
+	rc_eutra->has_trigg_quant = 1;
+	rc_eutra->trigg_quant = TRIGGER_QUANTITY__TRIGQ_RSRP;
+	rc_eutra->has_report_quant = 1;
+	rc_eutra->report_quant = REPORT_QUANTITY__REPQ_BOTH;
+	rc_eutra->has_max_rep_cells = 1;
+	rc_eutra->max_rep_cells = 3;
+	rc_eutra->has_rep_interval = 1;
+	rc_eutra->rep_interval = REPORT_INTERVAL__REPINT_ms10240;
+	rc_eutra->has_rep_amount = 1;
+	rc_eutra->rep_amount = REPORT_AMOUNT__REPAMT_infinity;
+	rc_eutra->has_ue_rxtx_time_diff = 0;
+	rc_eutra->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL;
+
+	RepConfPer *periodical = malloc(sizeof(*periodical));
+	rep_conf_per__init(periodical);
+	periodical->has_purpose = 1;
+	periodical->purpose = PERIODIC_REP_PURPOSE__PERRP_REPORT_STRONGEST_CELLS;
+	// periodical->PERIODIC_REP_PURPOSE__PERRP_REPORT_CGI_INFO;
+	rc_eutra->periodical = periodical;
+
+	// RepConfA1 *a1 = malloc(sizeof(*a1));
+	// rep_conf_a1__init(a1);
+	// threshold__eutra__init(a1->a1_threshold);
+	// a1->a1_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
+	// a1->a1_threshold->rsrp = 80;
+	// // a1->a1_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRQ;
+	// // a1->a1_threshold->rsrq = 0;
+	// rc_eutra->a1 = a1;
+
+	// RepConfA2 *a2 = malloc(sizeof(*a2));
+	// rep_conf_a2__init(a2);
+	// threshold__eutra__init(a2->a2_threshold);
+	// a2->a2_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
+	// a2->a2_threshold->rsrp = 80;
+	// // a2->a2_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRQ;
+	// // a2->a2_threshold->rsrq = 0;
+	// rc_eutra->a2 = a2;
+
+	// RepConfA3 *a3 = malloc(sizeof(*a3));
+	// rep_conf_a3__init(a3);
+	// a3->has_a3_offset = 1;
+	// a3->a3_offset = 5;
+	// a3->has_report_on_leave = 1;
+	// a3->report_on_leave = 1;
+	// rc_eutra->a3 = a3;
+
+	// RepConfA4 *a4 = malloc(sizeof(*a4));
+	// rep_conf_a4__init(a4);
+	// threshold__eutra__init(a4->a4_threshold);
+	// a4->a4_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
+	// a4->a4_threshold->rsrp = 80;
+	// // a4->a4_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRQ;
+	// // a4->a4_threshold->rsrq = 0;
+	// rc_eutra->a4 = a4;
+
+	// RepConfA5 *a5 = malloc(sizeof(*a5));
+	// rep_conf_a5__init(a5);
+	// threshold__eutra__init(a5->a5_threshold1);
+	// threshold__eutra__init(a5->a5_threshold2);
+	// a5->a5_threshold1->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
+	// a5->a5_threshold1->rsrp = 80;
+	// // a5->a5_threshold1->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRQ;
+	// // a5->a5_threshold1->rsrq = 0;
+	// a5->a5_threshold2->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
+	// a5->a5_threshold2->rsrp = 80;
+	// // a5->a5_threshold2->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRQ;
+	// // a5->a5_threshold2->rsrq = 0;
+	// rc_eutra->a5 = a5;
+
+	r_conf->rc_eutra = rc_eutra;
+	req->r_conf = r_conf;
+
+	mrrc_meas->req = req;
+	te->mrrc_meas = mrrc_meas;
+	request->te = te;
+
+	EmageMsg * reply = NULL;
+
+	if (emoai_RRC_measurements (request, &reply) < 0) {
+		EMLOG("Error in creating supreeth RRC measurements! ");
+	}
+	return 0;
+}

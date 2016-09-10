@@ -27,6 +27,8 @@
 #include "emoai_common.h"
 
 #include "MeasResults.h"
+#include "MeasObjectEUTRA.h"
+#include "ReportConfigEUTRA.h"
 
 /* Defines the parameters used to send RRC measurements reply message to
  * controller whenever the UE sends RRC measurements to OAI.
@@ -67,7 +69,9 @@ struct rrc_meas_trigg {
 
 /* Compares two triggers based on UE rnti and MeasId.
  */
-int rrc_meas_comp_trigg (struct rrc_meas_trigg* t1, struct rrc_meas_trigg* t2);
+int rrc_meas_comp_trigg (
+	struct rrc_meas_trigg * t1,
+	struct rrc_meas_trigg * t2);
 
 /* Fetches RRC measurement trigger context based on UE rnti and MeasId.
  */
@@ -80,40 +84,6 @@ int rrc_meas_rem_trigg (struct rrc_meas_trigg* ctxt);
 /* Insert RRC measurement triggger context into tree.
  */
 int rrc_meas_add_trigg (struct rrc_meas_trigg* ctxt);
-
-/* Get DL frequency from EARFCN number for FDD bands.
- */
-float emoai_get_fdd_band_dl_freq (int band_array_index, uint32_t earfcn);
-
-/* Get UL frequency from EARFCN number for FDD bands.
- */
-float emoai_get_fdd_band_ul_freq (int band_array_index, uint32_t earfcn);
-
-/* Get frequency from EARFCN number for TDD bands.
- */
-float emoai_get_tdd_band_freq (int band_array_index, uint32_t earfcn);
-
-/* Get the array index in fdd_dl_bands corresponding to EARFCN.
- */
-int emoai_get_fdd_dl_band_array_index (uint32_t earfcn);
-
-/* Get the array index in fdd_ul_bands corresponding to EARFCN.
- */
-int emoai_get_fdd_ul_band_array_index (uint32_t earfcn);
-
-/* Get the array index in tdd_bands corresponding to EARFCN.
- */
-int emoai_get_tdd_band_array_index (uint32_t earfcn);
-
-/* Get total bandwidth of a particular EUTRA FDD band corresponding to array
- * index in fdd_bands_dl or fdd_bands_ul.
- */
-int emoai_get_fdd_band_bw (int band_array_index);
-
-/* Get total bandwidth of a particular EUTRA TDD band corresponding to array
- * index in tdd_bands.
- */
-int emoai_get_tdd_band_bw (int band_array_index);
 
 /* Holds all the information about Bandwidth of each of EUTRA TDD bands.
  */
@@ -171,5 +141,145 @@ struct fdd_bands_ul_i {
 	/* Lowest frequency in UL for this band (MHz). */
 	float f_ULl;
 };
+
+/* Holds the context maintained at RRC OAI eNB for performing RRC operations.
+ */
+struct UE_RRC_proto_ctxt {
+	/* RNTI of the UE. */
+	uint32_t rnti;
+	/* Context maintained at RRC OAI eNB for each UE. */
+	protocol_ctxt_t * UE_RRC_ctxt;
+};
+
+/* Get DL frequency from EARFCN number for FDD bands.
+ */
+float emoai_get_fdd_band_dl_freq (int band_array_index, uint32_t earfcn);
+
+/* Get UL frequency from EARFCN number for FDD bands.
+ */
+float emoai_get_fdd_band_ul_freq (int band_array_index, uint32_t earfcn);
+
+/* Get frequency from EARFCN number for TDD bands.
+ */
+float emoai_get_tdd_band_freq (int band_array_index, uint32_t earfcn);
+
+/* Get the array index in fdd_dl_bands corresponding to EARFCN.
+ */
+int emoai_get_fdd_dl_band_array_index (uint32_t earfcn);
+
+/* Get the array index in fdd_ul_bands corresponding to EARFCN.
+ */
+int emoai_get_fdd_ul_band_array_index (uint32_t earfcn);
+
+/* Get the array index in tdd_bands corresponding to EARFCN.
+ */
+int emoai_get_tdd_band_array_index (uint32_t earfcn);
+
+/* Get total bandwidth of a particular EUTRA FDD band corresponding to array
+ * index in fdd_bands_dl or fdd_bands_ul.
+ */
+int emoai_get_fdd_band_bw (int band_array_index);
+
+/* Get total bandwidth of a particular EUTRA TDD band corresponding to array
+ * index in tdd_bands.
+ */
+int emoai_get_tdd_band_bw (int band_array_index);
+
+/* Compares physical carrier frequency of the requested measurement object
+ * with that of already existing measurement objects.
+ * Returns:
+ * 		0 -> frequencies are not equal
+ * 		-1 -> requested frequency leads to erroneous condition
+ * 		1 -> frequencies are equal
+ */
+int emoai_comp_req_freq (uint32_t earfcnR, uint32_t earfcnC);
+
+/* Compares requested EUTRA measurement object with that of already existing
+ * EUTRA measurement objects.
+ * Returns:
+ * 		0 -> EUTRA measurement objects are not equal
+ * 		-1 -> requested EUTRA measurement object leads to erroneous condition
+ * 		1 -> EUTRA measurement objects are equal
+ */
+int emoai_comp_EUTRA_measObj (MeasObjEUTRA * req_mo, MeasObjEUTRA * ctxt_mo);
+
+/* Validates requested measurement object parameters and also checks whether
+ * similar measurement object already exists.
+ * Returns:
+ * 		0 -> measurement object does not exist and is valid
+ * 		-1 -> requested measurement object leads to erroneous condition
+ * 		(> 0) -> measurement object already exist and is valid. Return value
+ *				 is measurement object identifier of existing object
+ */
+int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject * m_obj);
+
+/* Compares requested EUTRA report configuration with that of already existing
+ * EUTRA report configurations.
+ * Returns:
+ * 		0 -> EUTRA report configurations are not equal
+ * 		-1 -> requested EUTRA report configuration leads to erroneous condition
+ * 		1 -> EUTRA report configurations are equal
+ */
+int emoai_comp_EUTRA_repConf (RepConfEUTRA * req_rc, RepConfEUTRA * ctxt_rc);
+
+/* Validates requested report configuration parameters and also checks whether
+ * similar report configuration already exists.
+ * Returns:
+ * 		0 -> report configuration does not exist and is valid
+ * 		-1 -> requested report configuration leads to erroneous condition
+ * 		(> 0) -> report configuration already exist and is valid. Return value
+ *				 is report configuration identifier of existing object
+ */
+int rrc_meas_val_trigg_repConf (
+	ueid_t ue_id,
+	uint32_t mo_freq,
+	ReportConfig * r_conf);
+
+/* Update the contents of existing measurement object if the requested
+ * measurement object has the same carrier frequency as the existing object.
+ */
+int rrc_meas_trigg_update_measObj (int mo_id, MeasObject * m_obj);
+
+/* Receives RRC measurements request from controller and process it.
+ * Sends back a success reply upon successfully processing the request, else
+ * sends backs a failure reply to the controller.
+ *
+ * Returns 0 on success, or a negative error code on failure.
+ */
+int emoai_RRC_measurements (EmageMsg * request, EmageMsg ** reply);
+
+/* Stores the pointer to mui variable stored in RRC eNB of OAI.
+ * This is used to in lower layer signalling. (OAI specific)
+ */
+int emoai_store_rrc_eNB_mui (mui_t * mui);
+
+/* Stores the pointer to protocol context maintained in RRC eNB of OAI for
+ * each UE. This is used for carrying of RRC stack operations. (OAI specific)
+ */
+int emoai_store_UE_RRC_pctxt (uint32_t rnti, protocol_ctxt_t * ctxt_pP);
+
+/* Removes the stored pointer to protocol context for particular UE.
+ * (OAI specific)
+ */
+int emoai_rem_UE_RRC_pctxt (uint32_t rnti);
+
+/* Fetches the stored pointer to protocol context for particular UE.
+ * (OAI specific)
+ */
+protocol_ctxt_t* emoai_get_UE_RRC_pctxt (uint32_t rnti);
+
+/* Standard RRC reconfiguration stack operation for a UE in order to reconfigure
+ * its RRC measurements.
+ *
+ * Returns 0 on success, or a negative error code on failure.
+ */
+int emoai_RRC_meas_reconf (
+	uint32_t rnti,
+	int measId_add,
+	int measId_rem,
+	MeasObject * m_obj,
+	ReportConfig * r_conf);
+
+int rrc_meas_req (uint32_t * rnti);
 
 #endif

@@ -246,8 +246,7 @@ int emoai_trig_RRC_meas_conf_report (rnti_t * rnti) {
 	if (emoai_create_header(
 			emoai_get_b_id(),
 			0,
-			// ctxt->t_id,
-			0,
+			ctxt->t_id,
 			&header) != 0)
 		goto error;
 
@@ -384,13 +383,13 @@ int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA ** r) {
 	if (r_c.triggerType.present ==
 								ReportConfigEUTRA__triggerType_PR_periodical) {
 		/* Periodical measurement event. */
-		(*r)->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_PERIDICAL;
-		RepConfPer *peridical = malloc(sizeof(RepConfPer));
-		rep_conf_per__init(peridical);
+		(*r)->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL;
+		RepConfPer *periodical = malloc(sizeof(RepConfPer));
+		rep_conf_per__init(periodical);
 		/* Fill the purpose of periodical measurements. */
-		peridical->has_purpose = 1;
-		peridical->purpose = r_c.triggerType.choice.periodical.purpose;
-		(*r)->peridical = peridical;
+		periodical->has_purpose = 1;
+		periodical->purpose = r_c.triggerType.choice.periodical.purpose;
+		(*r)->periodical = periodical;
 	} else if (r_c.triggerType.present ==
 									ReportConfigEUTRA__triggerType_PR_event) {
 		/* List of event type measurements. */

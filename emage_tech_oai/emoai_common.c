@@ -23,7 +23,7 @@
 #include "LAYER2/MAC/extern.h"
 #include "openair1/PHY/extern.h"
 
-int emoai_create_new_thread (void (*func)(void *), void *arg) {
+int emoai_create_new_thread (void * (*func)(void *), void * arg) {
 
 	int s = 0;
 	/* POSIX thread variable. */
@@ -99,6 +99,17 @@ int emoai_get_num_ues (void) {
 uint32_t emoai_get_b_id (void) {
 	const Enb_properties_array_t* enb_properties = enb_config_get();
 	return enb_properties->properties[DEFAULT_ENB_ID]->eNB_id;
+}
+
+float emoai_get_operating_dl_freq (ccid_t cc_id) {
+	const Enb_properties_array_t* enb_properties = enb_config_get();
+	return (enb_properties->properties[DEFAULT_ENB_ID]->
+										downlink_frequency[cc_id] / 1000000);
+}
+
+int emoai_get_operating_band (ccid_t cc_id) {
+	const Enb_properties_array_t* enb_properties = enb_config_get();
+	return enb_properties->properties[DEFAULT_ENB_ID]->eutra_band[cc_id];
 }
 
 uint32_t emoai_get_ue_crnti (ueid_t ue_id) {
@@ -242,7 +253,7 @@ uint32_t emoai_get_feature_grp_ind (ueid_t ue_id) {
 											featureGroupIndicators != NULL) {
 			uint32_t size = ue_context_p->ue_context.UE_EUTRA_Capability->
 												featureGroupIndicators->size;
-			/* fgi is generally 32 bits, hence size must not exceed 4. */
+			/* fgi in rel.8 and 9 are 32 bits, hence size must not exceed 4. */
 			if (size > 4) {
 				/* fgi > 32 bits is not handled for now. */
 				size = 4;
@@ -269,3 +280,53 @@ int emoai_get_ue_category (ueid_t ue_id) {
 	}
 	return -1;
 }
+
+int emoai_is_A5A4_supp (ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (ue_id);
+	/* 14th bit in Feature group Indicator provides this info. */
+	return ((fgi >> (32 - 14)) & 0x01);
+}
+
+int emoai_is_intraF_refs_per_meas_supp (ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (ue_id);
+	/* 16th bit in Feature group Indicator provides this info. */
+	return ((fgi >> (32 - 16)) & 0x01);
+}
+
+int emoai_is_interF_meas_supp (ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (ue_id);
+	/* 25th bit in Feature group Indicator provides this info. */
+	return ((fgi >> (32 - 25)) & 0x01);
+}
+
+int emoai_is_interF_refs_per_meas_supp (ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (ue_id);
+	/* 16th bit in Feature group Indicator provides this info. */
+	return (emoai_is_interF_meas_supp(ue_id) & ((fgi >> (32 - 16)) & 0x01));
+}
+
+int emoai_is_longDRX_DRX_supp (ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (ue_id);
+	/* 5th bit in Feature group Indicator provides this info. */
+	return ((fgi >> (32 - 5)) & 0x01);
+}
+
+int emoai_is_intraF_ANR_supp (ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (ue_id);
+	/* 17th bit in Feature group Indicator provides this info. */
+	return (emoai_is_longDRX_DRX_supp(ue_id) & ((fgi >> (32 - 17)) & 0x01));
+}
+
+int emoai_is_interF_HO_intra_DD_supp (ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (ue_id);
+	/* 13th bit in Feature group Indicator provides this info. */
+	return (emoai_is_interF_meas_supp(ue_id) & ((fgi >> (32 - 13)) & 0x01));
+}
+
+int emoai_is_interF_ANR_supp (ueid_t ue_id) {
+	uint32_t fgi = emoai_get_feature_grp_ind (ue_id);
+	/* 18th bit in Feature group Indicator provides this info. */
+	return (emoai_is_interF_HO_intra_DD_supp(ue_id) &
+												((fgi >> (32 - 18)) & 0x01));
+}
+

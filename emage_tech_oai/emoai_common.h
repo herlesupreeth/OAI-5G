@@ -47,7 +47,7 @@ typedef uint32_t tid_t;
  *
  * Returns 0 on success, or a negative error code on failure.
  */
-int emoai_create_new_thread (void (*func)(void *), void *arg);
+int emoai_create_new_thread (void * (*func)(void *), void * arg);
 
 /* Create the header for the main message.
  *
@@ -72,6 +72,16 @@ int emoai_get_num_ues (void);
  * Returns base station identifier specified in eNB config file.
  */
 uint32_t emoai_get_b_id (void);
+
+/*
+ * Returns operating downlink frequency specified in eNB config file.
+ */
+float emoai_get_operating_dl_freq (ccid_t cc_id);
+
+/*
+ * Returns operating EUTRA frequency band specified in eNB config file.
+ */
+int emoai_get_operating_band (ccid_t cc_id);
 
 /*
  * Returns C-RNTI of UE given the ue id in the system.
@@ -139,5 +149,50 @@ uint32_t emoai_get_feature_grp_ind (ueid_t ue_id);
  * Returns category of the UE.
  */
 int emoai_get_ue_category (ueid_t ue_id);
+
+/*
+ * Returns whether UE supports event measurement reporting A4 and A5.
+ */
+int emoai_is_A5A4_supp (ueid_t ue_id);
+
+/*
+ * Returns whether UE supports periodical measurement, reportStrongestCells:
+ * EUTRA Intra-frequency.
+ */
+int emoai_is_intraF_refs_per_meas_supp (ueid_t ue_id);
+
+/*
+ * Returns whether UE supports Inter-frequency measurements and reporting in
+ * E-UTRA connected mode.
+ */
+int emoai_is_interF_meas_supp (ueid_t ue_id);
+
+/*
+ * Returns whether UE supports periodical measurement, reportStrongestCells:
+ * EUTRA Inter-frequency.
+ */
+int emoai_is_interF_refs_per_meas_supp (ueid_t ue_id);
+
+/*
+ * Returns whether UE supports Long DRX cycle, DRX command MAC control element.
+ */
+int emoai_is_longDRX_DRX_supp (ueid_t ue_id);
+
+/*
+ * Returns whether UE supports Intra-frequency ANR features periodical
+ * measurement, reportStrongestCells and reportCGI.
+ */
+int emoai_is_intraF_ANR_supp (ueid_t ue_id);
+
+/*
+ * Returns whether UE supports Inter-frequency handover within FDD or TDD.
+ */
+int emoai_is_interF_HO_intra_DD_supp (ueid_t ue_id);
+
+/*
+ * Returns whether UE supports Inter-frequency ANR features periodical
+ * measurement, reportStrongestCells and reportCGI.
+ */
+int emoai_is_interF_ANR_supp (ueid_t ue_id);
 
 #endif
