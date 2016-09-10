@@ -330,3 +330,40 @@ int emoai_is_interF_ANR_supp (ueid_t ue_id) {
 												((fgi >> (32 - 18)) & 0x01));
 }
 
+int emoai_is_intraF_neighCellSIacq_supp (ueid_t ue_id) {
+	if (emoai_get_access_release_vers(ue_id) > AccessStratumRelease_rel8) {
+		struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
+		struct UE_EUTRA_Capability_v920_IEs	*nonCriticalExtension;
+		nonCriticalExtension = ue->ue_context.UE_EUTRA_Capability->
+														nonCriticalExtension;
+		if ((nonCriticalExtension) &&
+			(nonCriticalExtension->neighCellSI_AcquisitionParameters_r9.
+											intraFreqSI_AcquisitionForHO_r9) &&
+			(*nonCriticalExtension->neighCellSI_AcquisitionParameters_r9.
+									intraFreqSI_AcquisitionForHO_r9 ==
+ NeighCellSI_AcquisitionParameters_r9__intraFreqSI_AcquisitionForHO_r9_supported
+			)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int emoai_is_interF_neighCellSIacq_supp (ueid_t ue_id) {
+	if (emoai_get_access_release_vers(ue_id) > AccessStratumRelease_rel8) {
+		struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
+		struct UE_EUTRA_Capability_v920_IEs	*nonCriticalExtension;
+		nonCriticalExtension = ue->ue_context.UE_EUTRA_Capability->
+														nonCriticalExtension;
+		if ((nonCriticalExtension) &&
+			(nonCriticalExtension->neighCellSI_AcquisitionParameters_r9.
+											interFreqSI_AcquisitionForHO_r9) &&
+			(*nonCriticalExtension->neighCellSI_AcquisitionParameters_r9.
+									interFreqSI_AcquisitionForHO_r9 ==
+ NeighCellSI_AcquisitionParameters_r9__interFreqSI_AcquisitionForHO_r9_supported
+			)) {
+			return 1;
+		}
+	}
+	return 0;
+}

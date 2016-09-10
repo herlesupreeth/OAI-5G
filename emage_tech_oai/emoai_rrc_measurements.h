@@ -129,19 +129,6 @@ struct fdd_bands_dl_i {
 	float f_DLl;
 };
 
-/* Holds all the information about UL of each of EUTRA FDD bands.
- */
-struct fdd_bands_ul_i {
-	/* Band number of the EUTRA band. */
-	int n;
-	/* EARFCN lowest value in UL for this band. */
-	uint32_t cn_ULl;
-	/* EARFCN highest value in UL for this band. */
-	uint32_t cn_ULh;
-	/* Lowest frequency in UL for this band (MHz). */
-	float f_ULl;
-};
-
 /* Holds the context maintained at RRC OAI eNB for performing RRC operations.
  */
 struct UE_RRC_proto_ctxt {
@@ -176,7 +163,7 @@ int emoai_get_fdd_ul_band_array_index (uint32_t earfcn);
 int emoai_get_tdd_band_array_index (uint32_t earfcn);
 
 /* Get total bandwidth of a particular EUTRA FDD band corresponding to array
- * index in fdd_bands_dl or fdd_bands_ul.
+ * index in fdd_bands_dl.
  */
 int emoai_get_fdd_band_bw (int band_array_index);
 

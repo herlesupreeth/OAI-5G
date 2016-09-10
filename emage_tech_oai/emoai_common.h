@@ -195,4 +195,16 @@ int emoai_is_interF_HO_intra_DD_supp (ueid_t ue_id);
  */
 int emoai_is_interF_ANR_supp (ueid_t ue_id);
 
+/*
+ * Returns whether UE supports Intra-frequency neighbor cell signalling info.
+ * aquisition.
+ */
+int emoai_is_intraF_neighCellSIacq_supp (ueid_t ue_id);
+
+/*
+ * Returns whether UE supports Inter-frequency neighbor cell signalling info.
+ * aquisition.
+ */
+int emoai_is_interF_neighCellSIacq_supp (ueid_t ue_id);
+
 #endif

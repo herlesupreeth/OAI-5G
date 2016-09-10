@@ -171,48 +171,6 @@ struct fdd_bands_dl_i fdd_bands_dl[38] = {
 	{.n = 255, .cn_DLl = 260894, .cn_DLh = 262143, .f_DLl = 5725}
 };
 
-/* Lookup for UL of each of EUTRA FDD bands.
- */
-struct fdd_bands_ul_i fdd_bands_ul[38] = {
-	{.n = 1, .cn_ULl = 18000, .cn_ULh = 18599, .f_ULl = 1920},
-	{.n = 2, .cn_ULl = 18600, .cn_ULh = 19199, .f_ULl = 1850},
-	{.n = 3, .cn_ULl = 19200, .cn_ULh = 19949, .f_ULl = 1710},
-	{.n = 4, .cn_ULl = 19950, .cn_ULh = 20399, .f_ULl = 1710},
-	{.n = 5, .cn_ULl = 20400, .cn_ULh = 20649, .f_ULl = 824},
-	{.n = 6, .cn_ULl = 20650, .cn_ULh = 20749, .f_ULl = 830},
-	{.n = 7, .cn_ULl = 20750, .cn_ULh = 21449, .f_ULl = 2500},
-	{.n = 8, .cn_ULl = 21450, .cn_ULh = 21799, .f_ULl = 880},
-	{.n = 9, .cn_ULl = 21800, .cn_ULh = 22149, .f_ULl = 1749.9},
-	{.n = 10, .cn_ULl = 22150, .cn_ULh = 22749, .f_ULl = 1710},
-	{.n = 11, .cn_ULl = 22750, .cn_ULh = 22949, .f_ULl = 1427.9},
-	{.n = 12, .cn_ULl = 23010, .cn_ULh = 23179, .f_ULl = 699},
-	{.n = 13, .cn_ULl = 23180, .cn_ULh = 23279, .f_ULl = 777},
-	{.n = 14, .cn_ULl = 23280, .cn_ULh = 23379, .f_ULl = 788},
-	{.n = 17, .cn_ULl = 23730, .cn_ULh = 23849, .f_ULl = 704},
-	{.n = 18, .cn_ULl = 23850, .cn_ULh = 23999, .f_ULl = 815},
-	{.n = 19, .cn_ULl = 24000, .cn_ULh = 24149, .f_ULl = 830},
-	{.n = 20, .cn_ULl = 24150, .cn_ULh = 24449, .f_ULl = 832},
-	{.n = 21, .cn_ULl = 24450, .cn_ULh = 24599, .f_ULl = 1447.9},
-	{.n = 22, .cn_ULl = 24600, .cn_ULh = 25399, .f_ULl = 3410},
-	{.n = 23, .cn_ULl = 25500, .cn_ULh = 25699, .f_ULl = 2000},
-	{.n = 24, .cn_ULl = 25700, .cn_ULh = 26039, .f_ULl = 1626.5},
-	{.n = 25, .cn_ULl = 26040, .cn_ULh = 26689, .f_ULl = 1850},
-	{.n = 26, .cn_ULl = 26690, .cn_ULh = 27039, .f_ULl = 814},
-	{.n = 27, .cn_ULl = 27040, .cn_ULh = 27209, .f_ULl = 807},
-	{.n = 28, .cn_ULl = 27210, .cn_ULh = 27659, .f_ULl = 703},
-	{.n = 29, .cn_ULl = 0, .cn_ULh = 0, .f_ULl = 0},
-	{.n = 30, .cn_ULl = 27660, .cn_ULh = 27759, .f_ULl = 2305},
-	{.n = 31, .cn_ULl = 27760, .cn_ULh = 27809, .f_ULl = 452.5},
-	{.n = 32, .cn_ULl = 0, .cn_ULh = 0, .f_ULl = 0},
-	{.n = 65, .cn_ULl = 131072, .cn_ULh = 131971, .f_ULl = 1920},
-	{.n = 66, .cn_ULl = 131972, .cn_ULh = 132671, .f_ULl = 1710},
-	{.n = 67, .cn_ULl = 0, .cn_ULh = 0, .f_ULl = 0},
-	{.n = 68, .cn_ULl = 132672, .cn_ULh = 132971, .f_ULl = 698},
-	{.n = 69, .cn_ULl = 0, .cn_ULh = 0, .f_ULl = 0},
-	{.n = 70, .cn_ULl = 132972, .cn_ULh = 133121, .f_ULl = 1695},
-	{.n = 252, .cn_ULl = 0, .cn_ULh = 0, .f_ULl = 0},
-	{.n = 255, .cn_ULl = 0, .cn_ULh = 0, .f_ULl = 0}
-};
 
 /* RB Tree holding all request parameters related to RRC measurements trigger.
  */
@@ -411,16 +369,19 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 						meas_result = malloc(sizeof(EUTRARefSignalMeas));
 						eutra_ref_signal_meas__init(meas_result);
 
-						meas_result->has_rsrp = 1;
-						meas_result->rsrp = RSRP_meas_mapping[*(meas_list.
+						if (meas_list.list.array[i]->measResult.rsrpResult) {
+							meas_result->has_rsrp = 1;
+							meas_result->rsrp = RSRP_meas_mapping[*(meas_list.
 										list.array[i]->measResult.rsrpResult)];
-						EMLOG("RSRP of Target %d", meas_result->rsrp);
+							EMLOG("RSRP of Target %d", meas_result->rsrp);
+						}
 
-						meas_result->has_rsrq = 1;
-						meas_result->rsrq = RSRQ_meas_mapping[*(meas_list.
+						if (meas_list.list.array[i]->measResult.rsrqResult) {
+							meas_result->has_rsrq = 1;
+							meas_result->rsrq = RSRQ_meas_mapping[*(meas_list.
 										list.array[i]->measResult.rsrqResult)];
-						EMLOG("RSRQ of Target %d", meas_result->rsrq);
-
+							EMLOG("RSRQ of Target %d", meas_result->rsrq);
+						}
 						eutra_meas[i]->meas_result = meas_result;
 					}
 					/* Check for CGI measurements. */
@@ -549,14 +510,6 @@ float emoai_get_fdd_band_dl_freq (int band_array_index, uint32_t earfcn) {
 	return freq;
 }
 
-float emoai_get_fdd_band_ul_freq (int band_array_index, uint32_t earfcn) {
-	/* Return UL freq. */
-	float freq = fdd_bands_ul[band_array_index].f_ULl +
-					(0.1 * (earfcn - fdd_bands_ul[band_array_index].cn_ULl));
-	freq = roundf(freq * 10.0)/10.0;
-	return freq;
-}
-
 float emoai_get_tdd_band_freq (int band_array_index, uint32_t earfcn) {
 	/* Return TDD band freq. */
 	float freq = tdd_bands[band_array_index].f_l +
@@ -570,17 +523,6 @@ int emoai_get_fdd_dl_band_array_index (uint32_t earfcn) {
 	for (int i = 0; i < 38; i++) {
 		if ((earfcn > fdd_bands_dl[i].cn_DLl) &&
 				(earfcn < fdd_bands_dl[i].cn_DLh)) {
-			return i;
-		}
-	}
-	return -1;
-}
-
-int emoai_get_fdd_ul_band_array_index (uint32_t earfcn) {
-	/* Iterate through FDD bands. */
-	for (int i = 0; i < 38; i++) {
-		if ((earfcn > fdd_bands_ul[i].cn_ULl) &&
-				(earfcn < fdd_bands_ul[i].cn_ULh)) {
 			return i;
 		}
 	}
@@ -611,7 +553,6 @@ int emoai_comp_req_freq (uint32_t earfcnR, uint32_t earfcnC) {
 
 	float freqR = 0.0, freqC = 0.0;
 	int tdd_bands_index1, tdd_bands_index2;
-	int fdd_bands_indexU1, fdd_bands_indexU2;
 	int fdd_bands_indexD1, fdd_bands_indexD2;
 
 	/* Get the frequency corresponding to EARFCN of requests message. */
@@ -624,11 +565,6 @@ int emoai_comp_req_freq (uint32_t earfcnR, uint32_t earfcnC) {
 	if (fdd_bands_indexD1 != -1) {
 		freqR = emoai_get_fdd_band_dl_freq(fdd_bands_indexD1, earfcnR);
 	}
-	/* Checking for FDD uplink frequency. */
-	fdd_bands_indexU1 = emoai_get_fdd_ul_band_array_index(earfcnR);
-	if (fdd_bands_indexU1 != -1) {
-		freqR = emoai_get_fdd_band_ul_freq(fdd_bands_indexU1, earfcnR);
-	}
 
 	/* Get the frequency corresponding to EARFCN of trig context message. */
 	tdd_bands_index2 = emoai_get_tdd_band_array_index(earfcnC);
@@ -639,11 +575,6 @@ int emoai_comp_req_freq (uint32_t earfcnR, uint32_t earfcnC) {
 	fdd_bands_indexD2 = emoai_get_fdd_dl_band_array_index(earfcnC);
 	if (fdd_bands_indexD2 != -1) {
 		freqC = emoai_get_fdd_band_dl_freq(fdd_bands_indexD2, earfcnC);
-	}
-	/* Checking for FDD uplink frequency. */
-	fdd_bands_indexU2 = emoai_get_fdd_ul_band_array_index(earfcnC);
-	if (fdd_bands_indexU2 != -1) {
-		freqC = emoai_get_fdd_band_ul_freq(fdd_bands_indexU2, earfcnC);
 	}
 
 	/* Return value meaning:
@@ -739,13 +670,11 @@ int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject * m_obj) {
 		int ue_supp_bands_n = emoai_get_num_bands(ue_id);
 		uint32_t *ue_supp_bands = emoai_get_bands(ue_id);
 		int band_flag = 0;
-		int tdd_bands_index, fdd_bands_indexD, fdd_bands_indexU;
+		int tdd_bands_index, fdd_bands_indexD;
 		/* Get the frequency band corresponding to EARFCN of request message. */
 		tdd_bands_index = emoai_get_tdd_band_array_index(measobj_eutra->
 																carrier_freq);
 		fdd_bands_indexD = emoai_get_fdd_dl_band_array_index(measobj_eutra->
-																carrier_freq);
-		fdd_bands_indexU = emoai_get_fdd_ul_band_array_index(measobj_eutra->
 																carrier_freq);
 		if (tdd_bands_index != -1) {
 			freqR = emoai_get_tdd_band_freq(tdd_bands_index, measobj_eutra->
@@ -759,12 +688,9 @@ int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject * m_obj) {
 			band_bw = emoai_get_fdd_band_bw(fdd_bands_indexD);
 			max_band_freq = fdd_bands_dl[fdd_bands_indexD].f_DLl + band_bw;
 			min_band_freq = fdd_bands_dl[fdd_bands_indexD].f_DLl;
-		} else if (fdd_bands_indexU != -1) {
-			freqR = emoai_get_fdd_band_ul_freq(fdd_bands_indexU, measobj_eutra->
-																carrier_freq);
-			band_bw = emoai_get_fdd_band_bw(fdd_bands_indexU);
-			max_band_freq = fdd_bands_ul[fdd_bands_indexU].f_ULl + band_bw;
-			min_band_freq = fdd_bands_ul[fdd_bands_indexU].f_ULl;
+		} else {
+			/* Frequency does not belong to EUTRA bands. */
+			return -1;
 		}
 		for (int i = 0; i < ue_supp_bands_n; i++) {
 			if ((tdd_bands_index != -1) &&
@@ -773,10 +699,6 @@ int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject * m_obj) {
 				break;
 			} else if ((fdd_bands_indexD != -1) &&
 					(ue_supp_bands[i] == eutra_fdd_bands[fdd_bands_indexD])) {
-				band_flag = 1;
-				break;
-			} else if ((fdd_bands_indexU != -1) &&
-					(ue_supp_bands[i] == eutra_fdd_bands[fdd_bands_indexU])) {
 				band_flag = 1;
 				break;
 			}
@@ -1037,6 +959,7 @@ int rrc_meas_val_trigg_repConf (
 		 * multiple CCs.
 		 */
 		float operating_dl_f = emoai_get_operating_dl_freq(0);
+		EMLOG("printing value of operating freq %f", operating_dl_f);
 		float req_dl_f = 0.0;
 		int tdd_bands_index, fdd_bands_indexD, band_num = 0;
 		/* If the request event based measurements are A1 and A2, then request
@@ -1057,7 +980,10 @@ int rrc_meas_val_trigg_repConf (
 																	mo_freq);
 				band_num = eutra_fdd_bands[fdd_bands_indexD];
 			}
-			if (req_dl_f != operating_dl_f) {
+			/* Given frequency is not DL frequency EARFCN or the req. frequency
+			 * is not equal to serving cell DL frequency.
+			 */
+			if ((req_dl_f == 0.0) || (req_dl_f != operating_dl_f)) {
 				return -1;
 			}
 		}
@@ -1492,7 +1418,6 @@ int emoai_RRC_meas_reconf (
 	/* Check if UE is still active in the system. */
 	ue_id = find_UE_id(DEFAULT_ENB_ID, rnti);
 	if (ue_id < 0) {
-		EMLOG("Reached point 20! ");
 		goto error;
 	}
 
@@ -1501,7 +1426,6 @@ int emoai_RRC_meas_reconf (
 	struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
 
 	if (ue == NULL) {
-		EMLOG("Reached point 19! ");
 		goto error;
 	}
 
@@ -1514,7 +1438,6 @@ int emoai_RRC_meas_reconf (
 		/* A measurement needs to be removed. */
 		/* In UE context, all the measurement ids are stored sequentially. */
 		if (ue->ue_context.MeasId[measId_rem - 1] == NULL) {
-			EMLOG("Reached point 17! ");
 			goto error;
 		}
 		int measObj_id_rem = ue->ue_context.MeasId[measId_rem - 1]->
@@ -1603,11 +1526,17 @@ int emoai_RRC_meas_reconf (
 			measObjectEUTRA->neighCellConfig.bits_unused = 6;
 			measObjectEUTRA->offsetFreq = NULL;
 			if (m_obj->measobj_eutra->n_cells > 0) {
-				measObjectEUTRA->cellForWhichToReportCGI =
+				/* Setting cells to be measured and cells not to be measured. */
+				if ((r_conf->rc_eutra->conf__eutra_case ==
+									REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL) &&
+					(r_conf->rc_eutra->periodical->purpose ==
+								PERIODIC_REP_PURPOSE__PERRP_REPORT_CGI_INFO)) {
+					/* For CGI measurements only. */
+					measObjectEUTRA->cellForWhichToReportCGI =
 														calloc(1, sizeof(long));
-				*measObjectEUTRA->cellForWhichToReportCGI =
+					*measObjectEUTRA->cellForWhichToReportCGI =
 									m_obj->measobj_eutra->cells[0]->phy_cell_id;
-
+				}
 				/* Remove exisiting set of cells if they exist. */
 				measObjectEUTRA->cellsToRemoveList =
 											calloc(1, sizeof(CellIndexList_t));
@@ -1701,6 +1630,19 @@ int emoai_RRC_meas_reconf (
 								ReportConfigEUTRA__triggerType_PR_periodical;
 		reportConfigEUTRA->triggerType.choice.periodical.purpose =
 										r_conf->rc_eutra->periodical->purpose;
+		/* Configure to use autonomous gaps if supported by UE. */
+		if ((r_conf->rc_eutra->periodical->purpose ==
+								PERIODIC_REP_PURPOSE__PERRP_REPORT_CGI_INFO) &&
+					emoai_is_intraF_neighCellSIacq_supp(ue_id) &&
+					emoai_is_interF_neighCellSIacq_supp(ue_id)) {
+			EMLOG("Tracking down error! ");
+			reportConfigEUTRA->ext1 = calloc(1,
+											sizeof(*(reportConfigEUTRA->ext1)));
+			reportConfigEUTRA->ext1->si_RequestForHO_r9 =
+														calloc(1, sizeof(long));
+			*reportConfigEUTRA->ext1->si_RequestForHO_r9 =
+							ReportConfigEUTRA__ext1__si_RequestForHO_r9_setup;
+		}
 		break;
 	case REP_CONF__EUTRA__CONF__EUTRA_A1:
 		reportConfigEUTRA->triggerType.present =
@@ -1927,6 +1869,8 @@ error:
 	return -1;
 }
 
+
+
 int rrc_meas_req (uint32_t * rnti) {
 	/* Initialize the request message. */
 	EmageMsg * request = (EmageMsg *) malloc(sizeof(EmageMsg));
@@ -1970,21 +1914,21 @@ int rrc_meas_req (uint32_t * rnti) {
 	MeasObjEUTRA *measobj_eutra = malloc(sizeof(*measobj_eutra));
 	meas_obj__eutra__init(measobj_eutra);
 	measobj_eutra->has_carrier_freq = 1;
-	measobj_eutra->carrier_freq = 6400;
+	measobj_eutra->carrier_freq = 1850;
 
 	measobj_eutra->has_meas_bw = 1;
-	measobj_eutra->meas_bw = ALLOWED_MEAS_BW__AMBW_50;
+	measobj_eutra->meas_bw = ALLOWED_MEAS_BW__AMBW_25;
 
 	measobj_eutra->n_cells = 3;
 	CellsToMeasure **cells = NULL;
-	if (measobj_eutra->n_cells > 2) {
+	if (measobj_eutra->n_cells > 0) {
 		cells = malloc(measobj_eutra->n_cells * sizeof(*cells));
 		for (int i = 0; i < measobj_eutra->n_cells; i++) {
 			cells[i] = malloc(sizeof(**cells));
 			cells_to_measure__init(cells[i]);
 		}
 		cells[0]->has_phy_cell_id = 1;
-		cells[0]->phy_cell_id = 206;
+		cells[0]->phy_cell_id = 60;
 		cells[0]->has_offset_range = 1;
 		cells[0]->offset_range = Q_OFFSET_RANGE__QOR_dB0;
 		cells[1]->has_phy_cell_id = 1;
@@ -1998,7 +1942,7 @@ int rrc_meas_req (uint32_t * rnti) {
 		measobj_eutra->cells = cells;
 	}
 
-	measobj_eutra->n_bkl_cells = 1;
+	measobj_eutra->n_bkl_cells = 0;
 	BlacklistCells **bkl_cells = NULL;
 	if (measobj_eutra->n_bkl_cells > 0) {
 		bkl_cells = malloc(measobj_eutra->n_bkl_cells * sizeof(*bkl_cells));
@@ -2036,33 +1980,38 @@ int rrc_meas_req (uint32_t * rnti) {
 	rc_eutra->has_rep_amount = 1;
 	rc_eutra->rep_amount = REPORT_AMOUNT__REPAMT_infinity;
 	rc_eutra->has_ue_rxtx_time_diff = 0;
-	rc_eutra->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL;
 
+	rc_eutra->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL;
 	RepConfPer *periodical = malloc(sizeof(*periodical));
 	rep_conf_per__init(periodical);
 	periodical->has_purpose = 1;
-	periodical->purpose = PERIODIC_REP_PURPOSE__PERRP_REPORT_STRONGEST_CELLS;
-	// periodical->PERIODIC_REP_PURPOSE__PERRP_REPORT_CGI_INFO;
+	// periodical->purpose = PERIODIC_REP_PURPOSE__PERRP_REPORT_STRONGEST_CELLS;
+	periodical->purpose = PERIODIC_REP_PURPOSE__PERRP_REPORT_CGI_INFO;
 	rc_eutra->periodical = periodical;
 
+	// rc_eutra->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A1;
 	// RepConfA1 *a1 = malloc(sizeof(*a1));
 	// rep_conf_a1__init(a1);
+	// a1->a1_threshold = malloc(sizeof(*a1->a1_threshold));
 	// threshold__eutra__init(a1->a1_threshold);
 	// a1->a1_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
-	// a1->a1_threshold->rsrp = 80;
+	// a1->a1_threshold->rsrp = 40;
 	// // a1->a1_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRQ;
 	// // a1->a1_threshold->rsrq = 0;
 	// rc_eutra->a1 = a1;
 
+	// rc_eutra->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A2;
 	// RepConfA2 *a2 = malloc(sizeof(*a2));
 	// rep_conf_a2__init(a2);
+	// a2->a2_threshold = malloc(sizeof(*a2->a2_threshold));
 	// threshold__eutra__init(a2->a2_threshold);
 	// a2->a2_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
-	// a2->a2_threshold->rsrp = 80;
+	// a2->a2_threshold->rsrp = 50;
 	// // a2->a2_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRQ;
 	// // a2->a2_threshold->rsrq = 0;
 	// rc_eutra->a2 = a2;
 
+	// rc_eutra->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A3;
 	// RepConfA3 *a3 = malloc(sizeof(*a3));
 	// rep_conf_a3__init(a3);
 	// a3->has_a3_offset = 1;
@@ -2071,8 +2020,10 @@ int rrc_meas_req (uint32_t * rnti) {
 	// a3->report_on_leave = 1;
 	// rc_eutra->a3 = a3;
 
+	// rc_eutra->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A4;
 	// RepConfA4 *a4 = malloc(sizeof(*a4));
 	// rep_conf_a4__init(a4);
+	// a4->a4_threshold = malloc(sizeof(*a4->a4_threshold));
 	// threshold__eutra__init(a4->a4_threshold);
 	// a4->a4_threshold->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;
 	// a4->a4_threshold->rsrp = 80;
@@ -2080,8 +2031,11 @@ int rrc_meas_req (uint32_t * rnti) {
 	// // a4->a4_threshold->rsrq = 0;
 	// rc_eutra->a4 = a4;
 
+	// rc_eutra->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A5;
 	// RepConfA5 *a5 = malloc(sizeof(*a5));
 	// rep_conf_a5__init(a5);
+	// a5->a5_threshold1 = malloc(sizeof(*a5->a5_threshold1));
+	// a5->a5_threshold2 = malloc(sizeof(*a5->a5_threshold2));
 	// threshold__eutra__init(a5->a5_threshold1);
 	// threshold__eutra__init(a5->a5_threshold2);
 	// a5->a5_threshold1->threshold_case = THRESHOLD__EUTRA__THRESHOLD_RSRP;

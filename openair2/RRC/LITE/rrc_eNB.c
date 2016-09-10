@@ -1695,7 +1695,7 @@ rrc_eNB_generate_defaultRRCConnectionReconfiguration(
   measGapConfig->present = MeasGapConfig_PR_setup;
   measGapConfig->choice.release = NULL;
   measGapConfig->choice.setup.gapOffset.present = MeasGapConfig__setup__gapOffset_PR_gp1;
-  measGapConfig->choice.setup.gapOffset.choice.gp1 = 9;
+  measGapConfig->choice.setup.gapOffset.choice.gp1 = 7;
   // Add measGapConfig to ue_context
   ue_context_pP->ue_context.measGapConfig = measGapConfig;
 
