@@ -114,23 +114,6 @@ int emoai_UEs_ID_report (EmageMsg * request, EmageMsg ** reply) {
 
 	int i;
 
-	Header *header;
-	/* Initialize header message. */
-	/* Assign the same transaction id as the request message. */
-	if (emoai_create_header(
-			request->head->b_id,
-			request->head->seq,
-			request->head->t_id,
-			&header) != 0)
-		goto error;
-
-	/* Form the main Emage message here. */
-	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
-	emage_msg__init(*reply);
-	(*reply)->head = header;
-	/* Assign event type same as request message. */
-	(*reply)->event_types_case = request->event_types_case;
-
 	/* Form the UEs id message. */
 	UesId *mues_id = (UesId *) malloc(sizeof(UesId));
 	ues_id__init(mues_id);
@@ -166,6 +149,24 @@ int emoai_UEs_ID_report (EmageMsg * request, EmageMsg ** reply) {
 	repl->active_rnti = active_rnti;
 	repl->n_inactive_rnti = n_inactive_rnti;
 	repl->inactive_rnti = inactive_rnti;
+
+	Header *header;
+	/* Initialize header message. */
+	/* Assign the same transaction id as the request message. */
+	if (emoai_create_header(
+			request->head->b_id,
+			request->head->seq,
+			request->head->t_id,
+			&header) != 0) {
+		return -1;
+	}
+
+	/* Form the main Emage message here. */
+	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
+	emage_msg__init(*reply);
+	(*reply)->head = header;
+	/* Assign event type same as request message. */
+	(*reply)->event_types_case = request->event_types_case;
 
 	/* Attach the UEs id reply message to the main UEs Id message. */
 	mues_id->repl = repl;
@@ -203,14 +204,10 @@ int emoai_UEs_ID_report (EmageMsg * request, EmageMsg ** reply) {
 		se->mues_id = mues_id;
 		(*reply)->se = se;
 	} else {
-		goto error;
+		return -1;
 	}
 
 	return 0;
-
-	error:
-		EMLOG("Error forming UEs Id report message!");
-		return -1;
 }
 
 int emoai_trig_RRC_meas_conf_report (rnti_t * rnti) {
@@ -574,37 +571,8 @@ int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply) {
 		/* Its a single event request. */
 		req = request->se->mue_rrc_meas_conf->req;
 	} else {
-		goto error;
+		return -1;
 	}
-
-	/* Check if UE is still active in the system. */
-	ue_id = find_UE_id(DEFAULT_ENB_ID, req->rnti);
-	if (ue_id < 0) {
-		if (ctxt != NULL) {
-			/* UE no longer exists so remove its trigger. */
-			rrc_m_conf_rem_trigg(ctxt);
-		}
-		/* Failed outcome of request. */
-		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
-		goto error;
-	}
-
-	Header *header;
-	/* Initialize header message. */
-	/* Assign the same transaction id as the request message. */
-	if (emoai_create_header(
-			request->head->b_id,
-			request->head->seq,
-			request->head->t_id,
-			&header) != 0)
-		goto error;
-
-	/* Form the main Emage message here. */
-	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
-	emage_msg__init(*reply);
-	(*reply)->head = header;
-	/* Assign event type same as request message. */
-	(*reply)->event_types_case = request->event_types_case;
 
 	/* Form the UE RRC measurement configuration message. */
 	UeRrcMeasConf *mue_rrc_meas_conf = malloc(sizeof(UeRrcMeasConf));
@@ -619,8 +587,19 @@ int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply) {
 
 	/* Fill the RNTI. */
 	repl->rnti = req->rnti;
-	/* Successful outcome of request. */
-	repl->status = req_status;
+
+	/* Check if UE is still active in the system. */
+	ue_id = find_UE_id(DEFAULT_ENB_ID, req->rnti);
+	if (ue_id < 0) {
+		if (ctxt != NULL) {
+			/* UE no longer exists so remove its trigger. */
+			rrc_m_conf_rem_trigg(ctxt);
+		}
+		/* Failed outcome of request. */
+		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		goto req_error;
+	}
+
 	/* Set the RRC state of the UE. */
 	repl->has_ue_rrc_state = 1;
 	repl->ue_rrc_state = emoai_get_ue_state(ue_id);
@@ -650,9 +629,41 @@ int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply) {
 		capabilities->n_band = num_bands;
 		capabilities->band = bands;
 	}
-	if (emoai_get_access_release_vers(ue_id) != -1){
+	int ret_val;
+	ret_val = emoai_get_access_release_vers(ue_id);
+	if (ret_val != -1){
 		capabilities->has_release_3gpp = 1;
-		capabilities->release_3gpp = emoai_get_access_release_vers(ue_id);
+		capabilities->release_3gpp = ret_val;
+	}
+	ret_val = emoai_is_interF_neighCellSIacq_supp(ue_id);
+	if (ret_val != -1){
+		capabilities->has_interfreq_si_acq = 1;
+		capabilities->interfreq_si_acq = ret_val;
+	}
+	ret_val = emoai_is_intraF_neighCellSIacq_supp(ue_id);
+	if (ret_val != -1){
+		capabilities->has_intrafreq_si_acq = 1;
+		capabilities->intrafreq_si_acq = ret_val;
+	}
+	ret_val = emoai_is_A5A4_supp(ue_id);
+	if (ret_val != -1){
+		capabilities->has_a5_a4_events = 1;
+		capabilities->a5_a4_events = ret_val;
+	}
+	ret_val = emoai_is_interF_meas_supp(ue_id);
+	if (ret_val != -1){
+		capabilities->has_interfreq_meas = 1;
+		capabilities->interfreq_meas = ret_val;
+	}
+	ret_val = emoai_is_intraF_refs_per_meas_supp(ue_id);
+	if (ret_val != -1){
+		capabilities->has_intrafreq_ref_per_meas = 1;
+		capabilities->intrafreq_ref_per_meas = ret_val;
+	}
+	ret_val = emoai_is_interF_refs_per_meas_supp(ue_id);
+	if (ret_val != -1){
+		capabilities->has_interfreq_ref_per_meas = 1;
+		capabilities->interfreq_ref_per_meas = ret_val;
 	}
 
 	repl->capabilities = capabilities;
@@ -686,11 +697,13 @@ int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply) {
 					ue->ue_context.MeasObj[i]->measObject.choice.
 							measObjectEUTRA,
 							&(m_obj[n_m_obj - 1]->measobj_eutra)) < 0) {
-				goto error;
+				req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+				goto req_error;
 			}
 		} else {
 			/* Only EUTRA measurements are supported now. */
-			goto error;
+			req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+			goto req_error;
 		}
 	}
 	repl->n_m_obj = n_m_obj;
@@ -723,11 +736,13 @@ int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply) {
 					ue->ue_context.ReportConfig[i]->reportConfig.choice.
 								reportConfigEUTRA,
 								&(r_conf[n_r_conf - 1]->rc_eutra)) < 0) {
-				goto error;
+				req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+				goto req_error;
 			}
 		} else {
 			/* Only EUTRA measurements are supported now. */
-			goto error;
+			req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+			goto req_error;
 		}
 	}
 	repl->n_r_conf = n_r_conf;
@@ -758,10 +773,32 @@ int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply) {
 	repl->n_meas_id = n_meas_id;
 	repl->meas_id = meas_id;
 
+req_error:
+	/* Set the status of request message. Success or failure. */
+	repl->status = req_status;
+
 	/* Attach the measurement configuration reply message to
 	 * the main measurement configuration message.
 	 */
 	mue_rrc_meas_conf->repl = repl;
+
+	Header *header;
+	/* Initialize header message. */
+	/* Assign the same transaction id as the request message. */
+	if (emoai_create_header(
+			request->head->b_id,
+			request->head->seq,
+			request->head->t_id,
+			&header) != 0) {
+		return -1;
+	}
+
+	/* Form the main Emage message here. */
+	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
+	emage_msg__init(*reply);
+	(*reply)->head = header;
+	/* Assign event type same as request message. */
+	(*reply)->event_types_case = request->event_types_case;
 
 	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_TE) {
 		/* Its a triggered event reply. */
@@ -802,14 +839,10 @@ int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply) {
 		se->mue_rrc_meas_conf = mue_rrc_meas_conf;
 		(*reply)->se = se;
 	} else {
-		goto error;
+		return -1;
 	}
 
 	return 0;
-
-	error:
-		EMLOG("Error forming UEs Id reply message!");
-		return -1;
 }
 
 int rrc_m_conf_comp_trigg (

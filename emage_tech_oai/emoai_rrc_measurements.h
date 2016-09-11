@@ -77,9 +77,14 @@ int rrc_meas_comp_trigg (
  */
 struct rrc_meas_trigg* rrc_meas_get_trigg (uint32_t rnti, int measId);
 
-/* Removes RRC measurement triggger context from tree.
+/* Removes RRC measurement trigger context from tree.
  */
 int rrc_meas_rem_trigg (struct rrc_meas_trigg* ctxt);
+
+/* Removes all the RRC measurement trigger contexts from tree for a particular
+ * UE.
+ */
+int rrc_meas_rem_ue_all_trigg (uint32_t rnti);
 
 /* Insert RRC measurement triggger context into tree.
  */

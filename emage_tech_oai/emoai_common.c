@@ -233,8 +233,15 @@ int emoai_get_access_release_vers (ueid_t ue_id) {
 
 	if(ue_context_p != NULL &&
 						ue_context_p->ue_context.UE_EUTRA_Capability != NULL) {
-		return ue_context_p->ue_context.UE_EUTRA_Capability->
-														accessStratumRelease;
+		switch (ue_context_p->ue_context.UE_EUTRA_Capability->
+														accessStratumRelease) {
+		case AccessStratumRelease_rel8:
+			return 8;
+		case AccessStratumRelease_rel9:
+			return 9;
+		case AccessStratumRelease_rel10:
+			return 10;
+		}
 	}
 	return -1;
 }
@@ -331,7 +338,7 @@ int emoai_is_interF_ANR_supp (ueid_t ue_id) {
 }
 
 int emoai_is_intraF_neighCellSIacq_supp (ueid_t ue_id) {
-	if (emoai_get_access_release_vers(ue_id) > AccessStratumRelease_rel8) {
+	if (emoai_get_access_release_vers(ue_id) > 8) {
 		struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
 		struct UE_EUTRA_Capability_v920_IEs	*nonCriticalExtension;
 		nonCriticalExtension = ue->ue_context.UE_EUTRA_Capability->
@@ -350,7 +357,7 @@ int emoai_is_intraF_neighCellSIacq_supp (ueid_t ue_id) {
 }
 
 int emoai_is_interF_neighCellSIacq_supp (ueid_t ue_id) {
-	if (emoai_get_access_release_vers(ue_id) > AccessStratumRelease_rel8) {
+	if (emoai_get_access_release_vers(ue_id) > 8) {
 		struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
 		struct UE_EUTRA_Capability_v920_IEs	*nonCriticalExtension;
 		nonCriticalExtension = ue->ue_context.UE_EUTRA_Capability->
@@ -365,5 +372,33 @@ int emoai_is_interF_neighCellSIacq_supp (ueid_t ue_id) {
 			return 1;
 		}
 	}
+	return 0;
+}
+
+int emoai_handle_ue_down (uint32_t * rnti) {
+
+	struct rrc_m_conf_trigg *rrc_mconf_ctxt = NULL;
+
+	/****** LOCK **********************************************************/
+	pthread_spin_lock(&rrc_m_conf_t_lock);
+
+	rrc_mconf_ctxt = rrc_m_conf_get_trigg(*rnti);
+
+	pthread_spin_unlock(&rrc_m_conf_t_lock);
+	/****** UNLOCK ********************************************************/
+	if (rrc_mconf_ctxt != NULL) {
+		/* UE no longer exists so remove its trigger. */
+		rrc_m_conf_rem_trigg(rrc_mconf_ctxt);
+	}
+
+	/* Remove all the RRC measurement trigger contexts from tree for a
+	 * particular UE.
+	 */
+	rrc_meas_rem_ue_all_trigg(*rnti);
+
+	/* If UE is in inactive state, remove the UE RRC protocol context stored.
+	*/
+	emoai_rem_UE_RRC_pctxt(*rnti);
+
 	return 0;
 }

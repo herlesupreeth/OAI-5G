@@ -207,4 +207,9 @@ int emoai_is_intraF_neighCellSIacq_supp (ueid_t ue_id);
  */
 int emoai_is_interF_neighCellSIacq_supp (ueid_t ue_id);
 
+/*
+ * Procedure used for clean up when an UE becomes inactive.
+ */
+int emoai_handle_ue_down (uint32_t * rnti);
+
 #endif

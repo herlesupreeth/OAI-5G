@@ -228,6 +228,21 @@ int rrc_meas_rem_trigg (struct rrc_meas_trigg* ctxt) {
 	return 0;
 }
 
+int rrc_meas_rem_ue_all_trigg (uint32_t rnti) {
+
+	struct rrc_meas_trigg *rrc_meas_ctxt = NULL;
+
+	/* Compare with each of the RRC measurement trigger context stored. */
+	RB_FOREACH(rrc_meas_ctxt, rrc_meas_trigg_tree, &rrc_meas_t_head) {
+		if (rrc_meas_ctxt->rnti == rnti) {
+			/* Remove all RRC measurement triggers for this UE. */
+			rrc_meas_rem_trigg(rrc_meas_ctxt);
+		}
+	}
+
+	return 0;
+}
+
 int rrc_meas_add_trigg (struct rrc_meas_trigg* ctxt) {
 
 	if (ctxt == NULL)
@@ -1635,7 +1650,6 @@ int emoai_RRC_meas_reconf (
 								PERIODIC_REP_PURPOSE__PERRP_REPORT_CGI_INFO) &&
 					emoai_is_intraF_neighCellSIacq_supp(ue_id) &&
 					emoai_is_interF_neighCellSIacq_supp(ue_id)) {
-			EMLOG("Tracking down error! ");
 			reportConfigEUTRA->ext1 = calloc(1,
 											sizeof(*(reportConfigEUTRA->ext1)));
 			reportConfigEUTRA->ext1->si_RequestForHO_r9 =
@@ -1985,8 +1999,8 @@ int rrc_meas_req (uint32_t * rnti) {
 	RepConfPer *periodical = malloc(sizeof(*periodical));
 	rep_conf_per__init(periodical);
 	periodical->has_purpose = 1;
-	// periodical->purpose = PERIODIC_REP_PURPOSE__PERRP_REPORT_STRONGEST_CELLS;
-	periodical->purpose = PERIODIC_REP_PURPOSE__PERRP_REPORT_CGI_INFO;
+	periodical->purpose = PERIODIC_REP_PURPOSE__PERRP_REPORT_STRONGEST_CELLS;
+	// periodical->purpose = PERIODIC_REP_PURPOSE__PERRP_REPORT_CGI_INFO;
 	rc_eutra->periodical = periodical;
 
 	// rc_eutra->conf__eutra_case = REP_CONF__EUTRA__CONF__EUTRA_A1;
