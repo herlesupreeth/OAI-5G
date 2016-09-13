@@ -61,7 +61,7 @@ int emoai_trig_UEs_ID_report (void) {
 	EmageMsg *reply;
 
 	/* Initialize the request message. */
-	EmageMsg * request = (EmageMsg *) malloc(sizeof(EmageMsg));
+	EmageMsg *request = (EmageMsg *) malloc(sizeof(EmageMsg));
 	emage_msg__init(request);
 
 	Header *header;
@@ -90,6 +90,8 @@ int emoai_trig_UEs_ID_report (void) {
 	/* Form the UEs id request message. */
 	UesIdReq *req = malloc(sizeof(UesIdReq));
 	ues_id_req__init(req);
+	req->has_dummy = 1;
+	req->dummy = 0;
 
 	mues_id->req = req;
 	te->mues_id = mues_id;
@@ -772,6 +774,14 @@ int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply) {
 	}
 	repl->n_meas_id = n_meas_id;
 	repl->meas_id = meas_id;
+
+	repl->has_freq = 1;
+	/* Fetching operating band of eNB on CC ID 0. */
+	repl->freq = emoai_get_operating_band(0);
+
+	repl->has_pcell_dd = 1;
+	/* Fetching operating duplexing mode of eNB on CC ID 0. */
+	repl->pcell_dd = emoai_get_eNB_dupl_mode(0);
 
 req_error:
 	/* Set the status of request message. Success or failure. */

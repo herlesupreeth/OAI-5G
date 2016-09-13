@@ -753,11 +753,6 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
       if (drop_ue==1)
         continue;
 
-      if (CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)) {
-        LOG_W(MAC,"[eNB %d] frame %d subframe %d, UE %d/%x CC %d: not enough nCCE\n", module_idP,frameP,subframeP,UE_id,rnti,CC_id);
-        continue; // break;
-      }
-
       // MeasGap implementation
       int gapOffset = mac_eNB_get_rrc_measGap_offset(module_idP, rnti);
       int mgrp = mac_eNB_get_rrc_measGap_rep_period(module_idP, rnti);
@@ -821,6 +816,11 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
                             S_UL_NONE);
           continue;
         }
+      }
+
+      if (CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)) {
+        LOG_W(MAC,"[eNB %d] frame %d subframe %d, UE %d/%x CC %d: not enough nCCE\n", module_idP,frameP,subframeP,UE_id,rnti,CC_id);
+        continue; // break;
       }
 
       //      printf("UE %d/%x is feasible, mode %s\n",UE_id,rnti,mode_string[eNB_UE_stats->mode]);

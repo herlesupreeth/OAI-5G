@@ -528,27 +528,6 @@ schedule_ue_spec(
         continue_flag=1;
       }
 
-      if ((ue_sched_ctl->pre_nb_available_rbs[CC_id] == 0) ||  // no RBs allocated
-	  CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)
-	  ) {
-        LOG_D(MAC,"[eNB %d] Frame %d : no RB allocated for UE %d on CC_id %d: continue \n",
-              module_idP, frameP, UE_id, CC_id);
-        //if(mac_xface->get_transmission_mode(module_idP,rnti)==5)
-        continue_flag=1; //to next user (there might be rbs availiable for other UEs in TM5
-        // else
-        //  break;
-      }
-
-      if (frame_parms[CC_id]->frame_type == TDD)  {
-        set_ue_dai (subframeP,
-                    frame_parms[CC_id]->tdd_config,
-                    UE_id,
-                    CC_id,
-                    UE_list);
-        // update UL DAI after DLSCH scheduling
-        set_ul_DAI(module_idP,UE_id,CC_id,frameP,subframeP,frame_parms);
-      }
-
       // MeasGap implementation
       int gapOffset = mac_eNB_get_rrc_measGap_offset(module_idP, rnti);
       int mgrp = mac_eNB_get_rrc_measGap_rep_period(module_idP, rnti);
@@ -604,6 +583,36 @@ schedule_ue_spec(
             continue_flag = 1;
           }
         }
+
+        if (continue_flag == 1 ) {
+          add_ue_dlsch_info(module_idP,
+                            CC_id,
+                            UE_id,
+                            subframeP,
+                            S_DL_NONE);
+          continue;
+        }
+      }
+
+      if ((ue_sched_ctl->pre_nb_available_rbs[CC_id] == 0) ||  // no RBs allocated
+	  CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)
+	  ) {
+        LOG_D(MAC,"[eNB %d] Frame %d : no RB allocated for UE %d on CC_id %d: continue \n",
+              module_idP, frameP, UE_id, CC_id);
+        //if(mac_xface->get_transmission_mode(module_idP,rnti)==5)
+        continue_flag=1; //to next user (there might be rbs availiable for other UEs in TM5
+        // else
+        //  break;
+      }
+
+      if (frame_parms[CC_id]->frame_type == TDD)  {
+        set_ue_dai (subframeP,
+                    frame_parms[CC_id]->tdd_config,
+                    UE_id,
+                    CC_id,
+                    UE_list);
+        // update UL DAI after DLSCH scheduling
+        set_ul_DAI(module_idP,UE_id,CC_id,frameP,subframeP,frame_parms);
       }
 
       if (continue_flag == 1 ) {

@@ -112,6 +112,18 @@ int emoai_get_operating_band (ccid_t cc_id) {
 	return enb_properties->properties[DEFAULT_ENB_ID]->eutra_band[cc_id];
 }
 
+int emoai_get_eNB_dupl_mode (ccid_t cc_id) {
+	const Enb_properties_array_t* enb_properties = enb_config_get();
+	if (enb_properties->properties[DEFAULT_ENB_ID]->frame_type[cc_id] == "FDD")
+	{
+		return DD_MODE__DDM_FDD;
+	}
+	else
+	{
+		return DD_MODE__DDM_TDD;
+	}
+}
+
 uint32_t emoai_get_ue_crnti (ueid_t ue_id) {
 	return UE_RNTI(DEFAULT_ENB_ID, ue_id);
 }

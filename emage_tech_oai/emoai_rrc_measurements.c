@@ -1988,7 +1988,7 @@ int rrc_meas_req (uint32_t * rnti) {
 	rc_eutra->has_report_quant = 1;
 	rc_eutra->report_quant = REPORT_QUANTITY__REPQ_BOTH;
 	rc_eutra->has_max_rep_cells = 1;
-	rc_eutra->max_rep_cells = 3;
+	rc_eutra->max_rep_cells = 2;
 	rc_eutra->has_rep_interval = 1;
 	rc_eutra->rep_interval = REPORT_INTERVAL__REPINT_ms10240;
 	rc_eutra->has_rep_amount = 1;

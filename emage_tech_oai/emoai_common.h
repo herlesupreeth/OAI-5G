@@ -26,6 +26,7 @@
 #include <emage/emage.h>
 #include <emage/pb/main.pb-c.h>
 #include <emage/pb/statistics.pb-c.h>
+#include <emage/pb/configs.pb-c.h>
 #include <emage/emlog.h>
 #include "emoai.h"
 
@@ -77,6 +78,11 @@ uint32_t emoai_get_b_id (void);
  * Returns operating downlink frequency specified in eNB config file.
  */
 float emoai_get_operating_dl_freq (ccid_t cc_id);
+
+/*
+ * Returns duplexing mode of eNB from frame type parameter in eNB config file.
+ */
+int emoai_get_eNB_dupl_mode (ccid_t cc_id);
 
 /*
  * Returns operating EUTRA frequency band specified in eNB config file.

@@ -287,7 +287,7 @@ int add_new_ue(module_id_t mod_idP, int cc_idP, rnti_t rntiP,int harq_pidP)
 }
 
 //------------------------------------------------------------------------------
-int rrc_mac_remove_ue(module_id_t mod_idP,rnti_t rntiP) 
+int rrc_mac_remove_ue(module_id_t mod_idP,rnti_t rntiP)
 //------------------------------------------------------------------------------
 {
 
@@ -717,7 +717,7 @@ uint8_t UE_is_to_be_scheduled(module_id_t module_idP,int CC_id,uint8_t UE_id)
       ((UE_sched_ctl->ul_inactivity_timer>10)&&
        (UE_sched_ctl->ul_scheduled==0)&&
        (mac_eNB_get_rrc_status(module_idP,UE_RNTI(module_idP,UE_id)) < RRC_CONNECTED))) // every Frame when not RRC_CONNECTED
-    { 
+    {
 
     LOG_D(MAC,"[eNB %d][PUSCH] UE %d/%x should be scheduled\n",module_idP,UE_id,UE_RNTI(module_idP,UE_id));
     return(1);
@@ -887,14 +887,14 @@ int get_nb_subband(void)
 void init_CCE_table(int module_idP,int CC_idP)
 {
   memset(eNB_mac_inst[module_idP].CCE_table[CC_idP],0,800*sizeof(int));
-} 
+}
 
 
 int get_nCCE_offset(int *CCE_table,
-		    const unsigned char L, 
-		    const int nCCE, 
-		    const int common_dci, 
-		    const unsigned short rnti, 
+		    const unsigned char L,
+		    const int nCCE,
+		    const int common_dci,
+		    const unsigned short rnti,
 		    const unsigned char subframe)
 {
 
@@ -924,7 +924,7 @@ int get_nCCE_offset(int *CCE_table,
           break;
         }
       }
-     
+
       if (search_space_free == 1) {
 
 	//	printf("returning %d\n",m*L);
@@ -1104,10 +1104,10 @@ boolean_t CCE_allocation_infeasible(int module_idP,
 
 void SR_indication(module_id_t mod_idP, int cc_idP, frame_t frameP, rnti_t rntiP, sub_frame_t subframeP)
 {
- 
+
   int UE_id = find_UE_id(mod_idP, rntiP);
   UE_list_t *UE_list = &eNB_mac_inst[mod_idP].UE_list;
- 
+
   if (UE_id  != -1) {
     if (mac_eNB_get_rrc_status(mod_idP,UE_RNTI(mod_idP,UE_id)) < RRC_CONNECTED)
       LOG_I(MAC,"[eNB %d][SR %x] Frame %d subframeP %d Signaling SR for UE %d on CC_id %d\n",mod_idP,rntiP,frameP,subframeP, UE_id,cc_idP);
