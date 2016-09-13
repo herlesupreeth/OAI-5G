@@ -26,7 +26,6 @@
 #include <pthread.h>
 
 #include <emage/emage.h>
-#include "emoai_config.h"
 
 /* OAI supports number of cards = 1 in current implementation.
  * If more than one CC is supported, multithreaded approach will

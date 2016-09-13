@@ -53,7 +53,10 @@ int emoai_trig_UEs_ID_report (void);
  *
  * Returns 0 on success, or a negative error code on failure.
  */
-int emoai_UEs_ID_report (EmageMsg * request, EmageMsg ** reply);
+int emoai_UEs_ID_report (
+	EmageMsg * request,
+	EmageMsg ** reply,
+	unsigned int trigger_id);
 
 /* Trigger to send UE's RRC measurement configuration to controller.
  * Triggered whenever an UE sends reconfiguration complete or connection
@@ -82,7 +85,10 @@ int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA ** r);
  *
  * Returns 0 on success, or a negative error code on failure.
  */
-int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply);
+int emoai_RRC_meas_conf_report (
+	EmageMsg * request,
+	EmageMsg ** reply,
+	unsigned int trigger_id);
 
 /* Request parameters related to RRC measurements configuration trigger.
  */

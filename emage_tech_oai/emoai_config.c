@@ -51,11 +51,14 @@ int emoai_trig_UEs_ID_report (void) {
 		return 0;
 	}
 
-	/* Check here whether trigger is registered in agent and then proceed.
-	 * If the trigger is not enabled or deleted in agent.
-	 * set the ues_id_trigg_tid to -1.
-	 */
+	uint32_t b_id = emoai_get_b_id();
 
+	/* Check here whether trigger is registered in agent and then proceed.
+	 */
+	if (em_has_trigger(b_id, ues_id_trigg_tid, EM_UEs_ID_REPORT_TRIGGER) == 0) {
+		/* Trigger does not exist in agent so remove from wrapper as well. */
+		ues_id_trigg_tid = -1;
+	}
 
 	/* Reply message. */
 	EmageMsg *reply;
@@ -68,7 +71,7 @@ int emoai_trig_UEs_ID_report (void) {
 	/* Initialize header message. */
 	/* seq field of header is updated in agent. */
 	if (emoai_create_header(
-			emoai_get_b_id(),
+			b_id,
 			0,
 			ues_id_trigg_tid,
 			&header) != 0)
@@ -97,13 +100,16 @@ int emoai_trig_UEs_ID_report (void) {
 	te->mues_id = mues_id;
 	request->te = te;
 
-	if (emoai_UEs_ID_report (request, &reply) < 0) {
+	if (emoai_UEs_ID_report (request, &reply, 0) < 0) {
 		goto error;
 	}
 
 	emage_msg__free_unpacked(request, 0);
 
-	/* Here call the function to send the triggered event reply. */
+	/* Send the triggered event reply. */
+	if (em_send(b_id, reply) < 0) {
+		goto error;
+	}
 
 	return 0;
 
@@ -112,7 +118,10 @@ int emoai_trig_UEs_ID_report (void) {
 		return -1;
 }
 
-int emoai_UEs_ID_report (EmageMsg * request, EmageMsg ** reply) {
+int emoai_UEs_ID_report (
+	EmageMsg * request,
+	EmageMsg ** reply,
+	unsigned int trigger_id) {
 
 	int i;
 
@@ -228,9 +237,16 @@ int emoai_trig_RRC_meas_conf_report (rnti_t * rnti) {
 		return 0;
 	}
 
+	uint32_t b_id = emoai_get_b_id();
+
 	/* Check here whether trigger is registered in agent and then proceed.
-	 * If the trigger is not enabled remove the trigger context.
-	*/
+	 */
+	if (em_has_trigger(b_id, ctxt->t_id, EM_RRC_MEAS_CONF_TRIGGER) == 0) {
+		/* Trigger does not exist in agent so remove from wrapper as well. */
+		if (rrc_m_conf_rem_trigg(ctxt) < 0) {
+			goto error;
+		}
+	}
 
 	/* Reply message. */
 	EmageMsg *reply;
@@ -243,7 +259,7 @@ int emoai_trig_RRC_meas_conf_report (rnti_t * rnti) {
 	/* Initialize header message. */
 	/* seq field of header is updated in agent. */
 	if (emoai_create_header(
-			emoai_get_b_id(),
+			b_id,
 			0,
 			ctxt->t_id,
 			&header) != 0)
@@ -274,13 +290,16 @@ int emoai_trig_RRC_meas_conf_report (rnti_t * rnti) {
 	te->mue_rrc_meas_conf = mue_rrc_meas_conf;
 	request->te = te;
 
-	if (emoai_RRC_meas_conf_report (request, &reply) < 0) {
+	if (emoai_RRC_meas_conf_report (request, &reply, 0) < 0) {
 		goto error;
 	}
 
 	emage_msg__free_unpacked(request, 0);
 
-	/* Here call the function to send the triggered event reply. */
+	/* Send the triggered event reply. */
+	if (em_send(b_id, reply) < 0) {
+		goto error;
+	}
 
 	return 0;
 
@@ -546,7 +565,10 @@ int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA ** r) {
 		return -1;
 }
 
-int emoai_RRC_meas_conf_report (EmageMsg * request, EmageMsg ** reply) {
+int emoai_RRC_meas_conf_report (
+	EmageMsg * request,
+	EmageMsg ** reply,
+	unsigned int trigger_id) {
 
 	int i;
 	uint32_t ue_id;
@@ -821,8 +843,7 @@ req_error:
 		(*reply)->te = te;
 
 		/* If trigger context does not exist add the context.
-		 * Check for triggered reply event or request to add trigger from
-		 * controller.
+		 * Check for triggered reply or request event to add trigger.
 		*/
 		if (ctxt == NULL) {
 			ctxt = malloc(sizeof(struct rrc_m_conf_trigg));

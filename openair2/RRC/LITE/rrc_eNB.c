@@ -4400,13 +4400,13 @@ rrc_eNB_decode_dcch(
             LOG_E(RRC, "Failed to create the rrc measurement configuration trigger thread for UE %x.\n", rnti);
           }
           /* Create the thread where the triggered event will run. */
-          if (ue_context_p->ue_context.MeasId[0] == NULL) {
-            if(emoai_create_new_thread(
-                  rrc_meas_req,
-                  &ue_context_p->ue_context.rnti) != 0) {
-              LOG_E(RRC, "Failed to create the rrc measurement trigger thread for UE %x.\n", ue_context_p->ue_context.rnti);
-            }
-          }
+          // if (ue_context_p->ue_context.MeasId[0] == NULL) {
+          //   if(emoai_create_new_thread(
+          //         rrc_meas_req,
+          //         &ue_context_p->ue_context.rnti) != 0) {
+          //     LOG_E(RRC, "Failed to create the rrc measurement trigger thread for UE %x.\n", ue_context_p->ue_context.rnti);
+          //   }
+          // }
         #endif
       }
 

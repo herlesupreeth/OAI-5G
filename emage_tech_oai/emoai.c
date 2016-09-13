@@ -18,13 +18,15 @@
  */
 
 #include "emoai.h"
+#include "emoai_config.h"
+#include "emoai_rrc_measurements.h"
 
 /* Agent operations for OAI application. */
 struct em_agent_ops sim_ops = {
 	.init = emoai_init,
 	.UEs_ID_report = emoai_UEs_ID_report,
-	.RRC_meas_conf_report = emoai_RRC_meas_conf_report,
-	// .RRC_measurements = emoai_RRC_measurements,
+	.RRC_meas_conf = emoai_RRC_meas_conf_report,
+	.RRC_measurements = emoai_RRC_measurements,
 };
 
 int emoai_init (void) {

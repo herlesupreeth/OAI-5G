@@ -275,9 +275,16 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 		return 0;
 	}
 
+	uint32_t b_id = emoai_get_b_id();
+
 	/* Check here whether trigger is registered in agent and then proceed.
-	 * If the trigger is not enabled remove the trigger context.
 	*/
+	if (em_has_trigger(b_id, ctxt->t_id, EM_RRC_MEAS_TRIGGER) == 0) {
+		/* Trigger does not exist in agent so remove from wrapper as well. */
+		if (rrc_m_conf_rem_trigg(ctxt) < 0) {
+			goto error;
+		}
+	}
 
 	if (p->meas == NULL)
 		goto error;
@@ -294,7 +301,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 	 * seq: is currently set to zero but will be updated by the agent.
 	*/
 	if (emoai_create_header(
-			emoai_get_b_id(),
+			b_id,
 			0,
 			ctxt->t_id,
 			&header) != 0)
@@ -499,7 +506,9 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 	reply->te = te;
 
 	/* Send the report to controller. */
-	// em_send(emoai_get_b_id(), reply);
+	if (em_send(b_id, reply) < 0) {
+		goto error;
+	}
 
 	/* Free the measurement report received from UE. */
 	ASN_STRUCT_FREE(asn_DEF_MeasResults, p->meas);
@@ -1134,7 +1143,10 @@ int rrc_meas_trigg_update_measObj (int mo_id, MeasObject * m_obj) {
 		return -1;
 }
 
-int emoai_RRC_measurements (EmageMsg * request, EmageMsg ** reply) {
+int emoai_RRC_measurements (
+	EmageMsg * request,
+	EmageMsg ** reply,
+	unsigned int trigger_id) {
 
 	uint32_t ue_id;
 	struct rrc_meas_trigg *t_ctxt;
@@ -2071,7 +2083,7 @@ int rrc_meas_req (uint32_t * rnti) {
 
 	EmageMsg * reply = NULL;
 
-	if (emoai_RRC_measurements (request, &reply) < 0) {
+	if (emoai_RRC_measurements (request, &reply, 0) < 0) {
 		EMLOG("Error in creating supreeth RRC measurements! ");
 	}
 	return 0;

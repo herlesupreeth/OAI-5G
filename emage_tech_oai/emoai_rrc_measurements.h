@@ -238,7 +238,10 @@ int rrc_meas_trigg_update_measObj (int mo_id, MeasObject * m_obj);
  *
  * Returns 0 on success, or a negative error code on failure.
  */
-int emoai_RRC_measurements (EmageMsg * request, EmageMsg ** reply);
+int emoai_RRC_measurements (
+	EmageMsg * request,
+	EmageMsg ** reply,
+	unsigned int trigger_id);
 
 /* Stores the pointer to mui variable stored in RRC eNB of OAI.
  * This is used to in lower layer signalling. (OAI specific)
