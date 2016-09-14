@@ -281,7 +281,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 	*/
 	if (em_has_trigger(b_id, ctxt->t_id, EM_RRC_MEAS_TRIGGER) == 0) {
 		/* Trigger does not exist in agent so remove from wrapper as well. */
-		if (rrc_m_conf_rem_trigg(ctxt) < 0) {
+		if (rrc_meas_rem_trigg(ctxt) < 0) {
 			goto error;
 		}
 	}

@@ -29,7 +29,7 @@ int ues_id_trigg_tid = -1;
  * configuration trigger.
  */
 RB_HEAD(rrc_m_conf_trigg_tree, rrc_m_conf_trigg)
-						rrc_m_conf_t_head = RB_INITIALIZER(&rrc_m_conf_t_head);
+					rrc_m_conf_t_head = RB_INITIALIZER(&rrc_m_conf_t_head);
 
 RB_PROTOTYPE(
 	rrc_m_conf_trigg_tree,
@@ -43,6 +43,7 @@ RB_GENERATE(
 	rrc_m_conf_trigg,
 	rrc_m_c_t,
 	rrc_m_conf_comp_trigg);
+
 
 int emoai_trig_UEs_ID_report (void) {
 
@@ -798,8 +799,8 @@ int emoai_RRC_meas_conf_report (
 	repl->meas_id = meas_id;
 
 	repl->has_freq = 1;
-	/* Fetching operating band of eNB on CC ID 0. */
-	repl->freq = emoai_get_operating_band(0);
+	/* Fetching operating DL frequency of eNB on CC ID 0. */
+	repl->freq = emoai_get_operating_dl_freq(0);
 
 	repl->has_pcell_dd = 1;
 	/* Fetching operating duplexing mode of eNB on CC ID 0. */

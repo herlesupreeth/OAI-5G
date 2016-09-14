@@ -119,4 +119,9 @@ int rrc_m_conf_rem_trigg (struct rrc_m_conf_trigg* ctxt);
  */
 int rrc_m_conf_add_trigg (struct rrc_m_conf_trigg* ctxt);
 
+/* RB Tree holding all request parameters related to RRC measurements
+ * configuration trigger.
+ */
+struct rrc_m_conf_trigg_tree;
+
 #endif

@@ -277,4 +277,8 @@ int emoai_RRC_meas_reconf (
 
 int rrc_meas_req (uint32_t * rnti);
 
+/* RB Tree holding all request parameters related to RRC measurements trigger.
+ */
+struct rrc_meas_trigg_tree;
+
 #endif

@@ -18,6 +18,8 @@
  */
 
 #include "emoai_common.h"
+#include "emoai_config.h"
+#include "emoai_rrc_measurements.h"
 
 #include "RRC/LITE/extern.h"
 #include "LAYER2/MAC/extern.h"
@@ -114,12 +116,11 @@ int emoai_get_operating_band (ccid_t cc_id) {
 
 int emoai_get_eNB_dupl_mode (ccid_t cc_id) {
 	const Enb_properties_array_t* enb_properties = enb_config_get();
-	if (enb_properties->properties[DEFAULT_ENB_ID]->frame_type[cc_id] == "FDD")
-	{
+	if (enb_properties->properties[DEFAULT_ENB_ID]->frame_type[cc_id] ==
+																		FDD) {
 		return DD_MODE__DDM_FDD;
 	}
-	else
-	{
+	else {
 		return DD_MODE__DDM_TDD;
 	}
 }
