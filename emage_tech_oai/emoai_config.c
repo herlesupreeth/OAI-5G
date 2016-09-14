@@ -699,104 +699,111 @@ int emoai_RRC_meas_conf_report (
 	/* Fill the measurement object configuration. */
 	size_t n_m_obj = 0;
 	MeasObject **m_obj = NULL;
-	for (i = 0; i < MAX_MEAS_OBJ; i++) {
-		if (ue->ue_context.MeasObj[i] == NULL) {
-			continue;
-		}
-		++n_m_obj;
-		m_obj = (MeasObject **) realloc(m_obj, n_m_obj * sizeof(MeasObject *));
+	if (ue && ue->ue_context.MeasObj != NULL) {
+		for (i = 0; i < MAX_MEAS_OBJ; i++) {
+			if (ue->ue_context.MeasObj[i] == NULL) {
+				continue;
+			}
+			++n_m_obj;
+			m_obj = (MeasObject **) realloc(m_obj, n_m_obj *
+														sizeof(MeasObject *));
 
-		m_obj[n_m_obj - 1] = malloc(sizeof(MeasObject));
-		meas_object__init(m_obj[n_m_obj - 1]);
+			m_obj[n_m_obj - 1] = malloc(sizeof(MeasObject));
+			meas_object__init(m_obj[n_m_obj - 1]);
 
-		m_obj[n_m_obj - 1]->measobjid = ue->ue_context.MeasObj[i]->
-															measObjectId;
+			m_obj[n_m_obj - 1]->measobjid = ue->ue_context.MeasObj[i]->
+																measObjectId;
 
-		if (ue->ue_context.MeasObj[i]->measObject.present ==
-						MeasObjectToAddMod__measObject_PR_measObjectEUTRA) {
-			/* Set the type of Measurement object. */
-			m_obj[n_m_obj - 1]->meas_obj_case =
-									MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA;
-			/* Fill in the EUTRA measurement object. */
-			if (emoai_form_EUTRA_meas_obj(
-					ue->ue_context.MeasObj[i]->measObject.choice.
-							measObjectEUTRA,
-							&(m_obj[n_m_obj - 1]->measobj_eutra)) < 0) {
+			if (ue->ue_context.MeasObj[i]->measObject.present ==
+							MeasObjectToAddMod__measObject_PR_measObjectEUTRA) {
+				/* Set the type of Measurement object. */
+				m_obj[n_m_obj - 1]->meas_obj_case =
+										MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA;
+				/* Fill in the EUTRA measurement object. */
+				if (emoai_form_EUTRA_meas_obj(
+						ue->ue_context.MeasObj[i]->measObject.choice.
+								measObjectEUTRA,
+								&(m_obj[n_m_obj - 1]->measobj_eutra)) < 0) {
+					req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+					goto req_error;
+				}
+			} else {
+				/* Only EUTRA measurements are supported now. */
 				req_status = CONF_REQ_STATUS__CREQS_FAILURE;
 				goto req_error;
 			}
-		} else {
-			/* Only EUTRA measurements are supported now. */
-			req_status = CONF_REQ_STATUS__CREQS_FAILURE;
-			goto req_error;
 		}
+		repl->n_m_obj = n_m_obj;
+		repl->m_obj = m_obj;
 	}
-	repl->n_m_obj = n_m_obj;
-	repl->m_obj = m_obj;
 
 	/* Fill the report configuration object. */
 	size_t n_r_conf = 0;
 	ReportConfig **r_conf = NULL;
-	for (i = 0; i < MAX_MEAS_CONFIG; i++) {
-		if (ue->ue_context.ReportConfig[i] == NULL) {
-			continue;
-		}
-		++n_r_conf;
-		r_conf = (ReportConfig **) realloc(r_conf, n_r_conf *
+	if (ue && ue->ue_context.ReportConfig != NULL) {
+		for (i = 0; i < MAX_MEAS_CONFIG; i++) {
+			if (ue->ue_context.ReportConfig[i] == NULL) {
+				continue;
+			}
+			++n_r_conf;
+			r_conf = (ReportConfig **) realloc(r_conf, n_r_conf *
 														sizeof(ReportConfig *));
 
-		r_conf[n_r_conf - 1] = malloc(sizeof(ReportConfig));
-		report_config__init(r_conf[n_r_conf - 1]);
+			r_conf[n_r_conf - 1] = malloc(sizeof(ReportConfig));
+			report_config__init(r_conf[n_r_conf - 1]);
 
-		r_conf[n_r_conf - 1]->reportconfid = ue->ue_context.ReportConfig[i]
-														->reportConfigId;
+			r_conf[n_r_conf - 1]->reportconfid = ue->ue_context.ReportConfig[i]
+															->reportConfigId;
 
-		if (ue->ue_context.ReportConfig[i]->reportConfig.present ==
-				ReportConfigToAddMod__reportConfig_PR_reportConfigEUTRA) {
-			/* Set the type of Report Configuration. */
-			r_conf[n_r_conf - 1]->rep_conf_case =
-										REPORT_CONFIG__REP_CONF_RC__EUTRA;
-			/* Fill in the EUTRA Report Configuration object. */
-			if (emoai_form_EUTRA_rep_conf(
-					ue->ue_context.ReportConfig[i]->reportConfig.choice.
-								reportConfigEUTRA,
-								&(r_conf[n_r_conf - 1]->rc_eutra)) < 0) {
+			if (ue->ue_context.ReportConfig[i]->reportConfig.present ==
+					ReportConfigToAddMod__reportConfig_PR_reportConfigEUTRA) {
+				/* Set the type of Report Configuration. */
+				r_conf[n_r_conf - 1]->rep_conf_case =
+											REPORT_CONFIG__REP_CONF_RC__EUTRA;
+				/* Fill in the EUTRA Report Configuration object. */
+				if (emoai_form_EUTRA_rep_conf(
+						ue->ue_context.ReportConfig[i]->reportConfig.choice.
+									reportConfigEUTRA,
+									&(r_conf[n_r_conf - 1]->rc_eutra)) < 0) {
+					req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+					goto req_error;
+				}
+			} else {
+				/* Only EUTRA measurements are supported now. */
 				req_status = CONF_REQ_STATUS__CREQS_FAILURE;
 				goto req_error;
 			}
-		} else {
-			/* Only EUTRA measurements are supported now. */
-			req_status = CONF_REQ_STATUS__CREQS_FAILURE;
-			goto req_error;
 		}
+		repl->n_r_conf = n_r_conf;
+		repl->r_conf = r_conf;
 	}
-	repl->n_r_conf = n_r_conf;
-	repl->r_conf = r_conf;
 
 	/* Fill the measurement id object. */
 	size_t n_meas_id = 0;
 	MeasIdentifier **meas_id = NULL;
-	for (i=0; i < MAX_MEAS_ID; i++) {
-		if (ue->ue_context.MeasId[i] == NULL) {
-			continue;
-		}
-		++n_meas_id;
-		meas_id = (MeasIdentifier **) realloc(meas_id, n_meas_id *
+	if (ue && ue->ue_context.MeasId != NULL) {
+		for (i=0; i < MAX_MEAS_ID; i++) {
+			if (ue->ue_context.MeasId[i] == NULL) {
+				continue;
+			}
+			++n_meas_id;
+			meas_id = (MeasIdentifier **) realloc(meas_id, n_meas_id *
 													sizeof(MeasIdentifier *));
 
-		meas_id[n_meas_id - 1] = malloc(sizeof(MeasIdentifier));
-		meas_identifier__init(meas_id[n_meas_id - 1]);
-		/* Fill the measurement id. */
-		meas_id[n_meas_id - 1]->id = ue->ue_context.MeasId[i]->measId;
-		/* Fill the measurement object id. */
-		meas_id[n_meas_id - 1]->measobj_id = ue->ue_context.MeasId[i]->
+			meas_id[n_meas_id - 1] = malloc(sizeof(MeasIdentifier));
+			meas_identifier__init(meas_id[n_meas_id - 1]);
+			/* Fill the measurement id. */
+			meas_id[n_meas_id - 1]->id = ue->ue_context.MeasId[i]->measId;
+			/* Fill the measurement object id. */
+			meas_id[n_meas_id - 1]->measobj_id = ue->ue_context.MeasId[i]->
 																measObjectId;
-		/* Fill the report configuration id. */
-		meas_id[n_meas_id - 1]->report_conf_id = ue->ue_context.MeasId[i]->
+			/* Fill the report configuration id. */
+			meas_id[n_meas_id - 1]->report_conf_id = ue->ue_context.MeasId[i]->
 																reportConfigId;
+		}
+		repl->n_meas_id = n_meas_id;
+		repl->meas_id = meas_id;
 	}
-	repl->n_meas_id = n_meas_id;
-	repl->meas_id = meas_id;
 
 	repl->has_freq = 1;
 	/* Fetching operating DL frequency of eNB on CC ID 0. */

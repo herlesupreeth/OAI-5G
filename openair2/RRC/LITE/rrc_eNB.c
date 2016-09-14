@@ -106,11 +106,11 @@
 #   include "rrc_eNB_ral.h"
 #endif
 
-#if defined (EMAGE_AGENT)
+#ifdef EMAGE_AGENT
 #   include "emoai_config.h"
 #   include "emoai_common.h"
 #   include "emoai_rrc_measurements.h"
-#endif
+#endif /* EMAGE_AGENT */
 
 #include "SIMULATION/TOOLS/defs.h" // for taus
 
@@ -737,29 +737,38 @@ rrc_eNB_free_mem_UE_context(
     ue_context_pP->ue_context.sps_Config = NULL;
   }
 
-  for (i=0; i < MAX_MEAS_ID; i++) {
-    if (ue_context_pP->ue_context.MeasId[i] != NULL) {
-      ASN_STRUCT_FREE(asn_DEF_MeasIdToAddMod, ue_context_pP->ue_context.MeasId[i]);
-      ue_context_pP->ue_context.MeasId[i] = NULL;
+  if (ue_context_pP->ue_context.MeasId != NULL) {
+    for (i=0; i < MAX_MEAS_ID; i++) {
+      if (ue_context_pP->ue_context.MeasId[i] != NULL) {
+        ASN_STRUCT_FREE(asn_DEF_MeasIdToAddMod, ue_context_pP->ue_context.MeasId[i]);
+        ue_context_pP->ue_context.MeasId[i] = NULL;
+      }
     }
+    // free(ue_context_pP->ue_context.MeasId);
+    *ue_context_pP->ue_context.MeasId = NULL;
   }
-  free(ue_context_pP->ue_context.MeasId);
 
-  for (i=0; i < MAX_MEAS_OBJ; i++) {
-    if (ue_context_pP->ue_context.MeasObj[i] != NULL) {
-      ASN_STRUCT_FREE(asn_DEF_MeasObjectToAddMod, ue_context_pP->ue_context.MeasObj[i]);
-      ue_context_pP->ue_context.MeasObj[i] = NULL;
+  if (ue_context_pP->ue_context.MeasObj != NULL) {
+    for (i=0; i < MAX_MEAS_OBJ; i++) {
+      if (ue_context_pP->ue_context.MeasObj[i] != NULL) {
+        ASN_STRUCT_FREE(asn_DEF_MeasObjectToAddMod, ue_context_pP->ue_context.MeasObj[i]);
+        ue_context_pP->ue_context.MeasObj[i] = NULL;
+      }
     }
+    // free(ue_context_pP->ue_context.MeasObj);
+    *ue_context_pP->ue_context.MeasObj = NULL;
   }
-  free(ue_context_pP->ue_context.MeasObj);
 
-  for (i=0; i < MAX_MEAS_CONFIG; i++) {
-    if (ue_context_pP->ue_context.ReportConfig[i] != NULL) {
-      ASN_STRUCT_FREE(asn_DEF_ReportConfigToAddMod, ue_context_pP->ue_context.ReportConfig[i]);
-      ue_context_pP->ue_context.ReportConfig[i] = NULL;
+  if (ue_context_pP->ue_context.ReportConfig != NULL) {
+    for (i=0; i < MAX_MEAS_CONFIG; i++) {
+      if (ue_context_pP->ue_context.ReportConfig[i] != NULL) {
+        ASN_STRUCT_FREE(asn_DEF_ReportConfigToAddMod, ue_context_pP->ue_context.ReportConfig[i]);
+        ue_context_pP->ue_context.ReportConfig[i] = NULL;
+      }
     }
+    // free(ue_context_pP->ue_context.ReportConfig);
+    *ue_context_pP->ue_context.ReportConfig = NULL;
   }
-  free(ue_context_pP->ue_context.ReportConfig);
 
   if (ue_context_pP->ue_context.QuantityConfig) {
     ASN_STRUCT_FREE(asn_DEF_QuantityConfig, ue_context_pP->ue_context.QuantityConfig);
@@ -868,6 +877,15 @@ rrc_eNB_free_UE(const module_id_t enb_mod_idP,const struct rrc_eNB_ue_context_s*
       &eNB_rrc_inst[enb_mod_idP],
       (struct rrc_eNB_ue_context_s*) ue_context_pP);
   }
+  #ifdef EMAGE_AGENT
+    /* OAI does not support RRC_IDLE state for now, its either RRC Connected
+     * state or UE is disconnected from the network.
+     */
+    /* If UE is in inactive state, trigger the UEs ID report if it exists.
+     */
+    emoai_trig_UEs_ID_report();
+    emoai_handle_ue_down(&rnti);
+  #endif /* EMAGE_AGENT */
 }
 
 //-----------------------------------------------------------------------------
@@ -1423,9 +1441,7 @@ rrc_eNB_generate_defaultRRCConnectionReconfiguration(
 #endif
 
   // Measurement ID list
-  // struct MeasIdToAddMod ue_ctxt_MeasIdList[MAX_MEAS_ID];
-  // *ue_context_pP->ue_context.MeasId = ue_ctxt_MeasIdList;
-  ue_context_pP->ue_context.MeasId = malloc(MAX_MEAS_ID * sizeof(MeasIdToAddMod_t *));
+  // ue_context_pP->ue_context.MeasId = malloc(MAX_MEAS_ID * sizeof(MeasIdToAddMod_t *));
 
   MeasId_list = CALLOC(1, sizeof(*MeasId_list));
   memset((void *)MeasId_list, 0, sizeof(*MeasId_list));
@@ -1481,9 +1497,7 @@ rrc_eNB_generate_defaultRRCConnectionReconfiguration(
   // rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measIdToAddModList = MeasId_list;
 
   // Add one EUTRA Measurement Object
-  // struct MeasObjectToAddMod ue_ctxt_MeasObjectList[MAX_MEAS_OBJ];
-  // *ue_context_pP->ue_context.MeasObj = ue_ctxt_MeasObjectList;
-  ue_context_pP->ue_context.MeasObj = malloc(MAX_MEAS_OBJ * sizeof(MeasObjectToAddMod_t *));
+  // ue_context_pP->ue_context.MeasObj = malloc(MAX_MEAS_OBJ * sizeof(MeasObjectToAddMod_t *));
 
   MeasObj_list = CALLOC(1, sizeof(*MeasObj_list));
   memset((void *)MeasObj_list, 0, sizeof(*MeasObj_list));
@@ -1582,9 +1596,7 @@ rrc_eNB_generate_defaultRRCConnectionReconfiguration(
   // The UE is however allowed to perform measurements also when the PCell RSRP exceeds s-Measure
 
   // Report Configurations for periodical, A1-A5 events
-  // struct ReportConfigToAddMod ue_ctxt_ReportConfigList[MAX_MEAS_CONFIG];
-  // *ue_context_pP->ue_context.ReportConfig = ue_ctxt_ReportConfigList;
-  ue_context_pP->ue_context.ReportConfig = malloc(MAX_MEAS_CONFIG * sizeof(ReportConfigToAddMod_t *));
+  // ue_context_pP->ue_context.ReportConfig = malloc(MAX_MEAS_CONFIG * sizeof(ReportConfigToAddMod_t *));
 
   ReportConfig_list = CALLOC(1, sizeof(*ReportConfig_list));
 
@@ -1693,7 +1705,6 @@ rrc_eNB_generate_defaultRRCConnectionReconfiguration(
   // 5.5.2.9 Measurement gap configuration ETSI TS 136 331
   // Also 8.1.2.1 UE measurement capability ETSI TS 136 133
   measGapConfig->present = MeasGapConfig_PR_setup;
-  measGapConfig->choice.release = NULL;
   measGapConfig->choice.setup.gapOffset.present = MeasGapConfig__setup__gapOffset_PR_gp1;
   measGapConfig->choice.setup.gapOffset.choice.gp1 = 36;
   // Add measGapConfig to ue_context
@@ -2072,7 +2083,7 @@ rrc_eNB_process_MeasurementReport(
       ctxt_pP->module_id, ctxt_pP->frame, ctxt_pP->rnti, (int)measResults2->measId);
 
     xer_fprint(stdout, &asn_DEF_MeasResults, (void *)measResults2);
-    #if defined (EMAGE_AGENT)
+    #ifdef EMAGE_AGENT
       /* If RRC Measurement report is received from UE send triggered event
        * reply for the UE if trigger exists.
        */
@@ -2087,7 +2098,7 @@ rrc_eNB_process_MeasurementReport(
       if(emoai_create_new_thread(emoai_trig_rrc_measurements, p) != 0) {
         LOG_E(RRC, "Failed to create the rrc measurement trigger thread %x.\n", p->rnti);
       }
-    #endif
+    #endif /* EMAGE_AGENT */
 
 
     // if (measResults2->measResultNeighCells) {
@@ -4163,13 +4174,13 @@ rrc_eNB_decode_ccch(
       memcpy(&ue_context_p->ue_context.Srb2.Srb_info.Lchan_desc[1],
              &DCCH_LCHAN_DESC,
              LCHAN_DESC_SIZE);
-      #if defined (EMAGE_AGENT)
+      #ifdef EMAGE_AGENT
         /* If RRC Connection Request is received from UE it means UE has already
           * acquired the SI information.
          */
         ue_context_p->ue_context.Status = RRC_SI_RECEIVED;
         uint32_t rnti = ue_context_p->ue_context.rnti;
-      #endif
+      #endif /* EMAGE_AGENT */
       rrc_eNB_generate_RRCConnectionSetup(ctxt_pP, ue_context_p, CC_id);
       LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT"CALLING RLC CONFIG SRB1 (rbid %d)\n",
             PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
@@ -4385,7 +4396,7 @@ rrc_eNB_decode_dcch(
         LOG_I(RRC,
               PROTOCOL_RRC_CTXT_UE_FMT" UE State = RRC_RECONFIGURED \n",
               PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP));
-        #if defined (EMAGE_AGENT)
+        #ifdef EMAGE_AGENT
           uint32_t rnti = ue_context_p->ue_context.rnti;
           /* If UE is in reconfigured state, trigger the RRC measurement
            * configuration reply for the UE if trigger exists.
@@ -4393,12 +4404,7 @@ rrc_eNB_decode_dcch(
            */
           emoai_trig_UEs_ID_report();
           emoai_store_UE_RRC_pctxt(rnti, ctxt_pP);
-          /* Create the thread where the triggered event will run. */
-          if(emoai_create_new_thread(
-                emoai_trig_RRC_meas_conf_report,
-                &rnti) != 0) {
-            LOG_E(RRC, "Failed to create the rrc measurement configuration trigger thread for UE %x.\n", rnti);
-          }
+          emoai_trig_RRC_meas_conf_report(&rnti);
           /* Create the thread where the triggered event will run. */
           // if (ue_context_p->ue_context.MeasId[0] == NULL) {
           //   if(emoai_create_new_thread(
@@ -4407,7 +4413,7 @@ rrc_eNB_decode_dcch(
           //     LOG_E(RRC, "Failed to create the rrc measurement trigger thread for UE %x.\n", ue_context_p->ue_context.rnti);
           //   }
           // }
-        #endif
+        #endif /* EMAGE_AGENT */
       }
 
 #if defined(ENABLE_USE_MME)
@@ -4499,20 +4505,15 @@ rrc_eNB_decode_dcch(
           ue_context_p->ue_context.Status = RRC_CONNECTED;
           LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT" UE State = RRC_CONNECTED \n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP));
-          #if defined (EMAGE_AGENT)
+          #ifdef EMAGE_AGENT
             uint32_t rnti = ue_context_p->ue_context.rnti;
             /* UE is in connected state, trigger the RRC measurement
              * configuration reply for the UE if trigger exists.
              * Also, trigger the UEs ID report if it exists.
              */
             emoai_trig_UEs_ID_report();
-            /* Create the thread where the triggered event will run. */
-            if(emoai_create_new_thread(
-                emoai_trig_RRC_meas_conf_report,
-                &rnti) != 0) {
-              LOG_E(RRC, "Failed to create the rrc measurement configuration trigger thread %x.\n", rnti);
-            }
-          #endif
+            emoai_trig_RRC_meas_conf_report(&rnti);
+          #endif /* EMAGE_AGENT */
         }
       }
 
@@ -4802,11 +4803,11 @@ rrc_enb_task(
   protocol_ctxt_t                     ctxt;
   itti_mark_task_ready(TASK_RRC_ENB);
 
-  #if defined (EMAGE_AGENT)
+  #ifdef EMAGE_AGENT
     /* Store the pointer to rrc_eNB_mui.
      */
     emoai_store_rrc_eNB_mui(&rrc_eNB_mui);
-  #endif
+  #endif /* EMAGE_AGENT */
 
   while (1) {
     // Wait for a message

@@ -280,6 +280,12 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 	/* Check here whether trigger is registered in agent and then proceed.
 	*/
 	if (em_has_trigger(b_id, ctxt->t_id, EM_RRC_MEAS_TRIGGER) == 0) {
+
+		emoai_RRC_meas_reconf(p->rnti, -1, p->meas->measId, NULL, NULL);
+		/* Free the measurement report received from UE. */
+		ASN_STRUCT_FREE(asn_DEF_MeasResults, p->meas);
+		/* Free the params. */
+		free(p);
 		/* Trigger does not exist in agent so remove from wrapper as well. */
 		if (rrc_meas_rem_trigg(ctxt) < 0) {
 			goto error;
@@ -1204,13 +1210,15 @@ int emoai_RRC_measurements (
 	/* Get the UE context which holds all the measurement configuration info. */
 	struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
 	/* Assign the measurement identifiers. */
-	for (int i = 0; i < MAX_MEAS_ID; i++) {
-		if (ue->ue_context.MeasId[i] == NULL) {
-			meas_id = i + 1;
-			break;
+	if (ue->ue_context.MeasId != NULL) {
+		for (int i = 0; i < MAX_MEAS_ID; i++) {
+			if (ue->ue_context.MeasId[i] == NULL) {
+				meas_id = i + 1;
+				break;
+			}
 		}
 	}
-	/* At this point no measurement slots are free. */
+	/* At this point no measurement slots are not free. */
 	if (meas_id == 0) {
 		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
 		goto req_error;
@@ -1228,11 +1236,13 @@ int emoai_RRC_measurements (
 			goto req_error;
 		}
 	} else if (measObj_id == 0) {
-		for (int i = 0; i < MAX_MEAS_OBJ; i++) {
-			if (ue->ue_context.MeasObj[i] == NULL) {
-				measObj_id = i + 1;
-				req->m_obj->measobjid = measObj_id;
-				break;
+		if (ue->ue_context.MeasObj != NULL) {
+			for (int i = 0; i < MAX_MEAS_OBJ; i++) {
+				if (ue->ue_context.MeasObj[i] == NULL) {
+					measObj_id = i + 1;
+					req->m_obj->measobjid = measObj_id;
+					break;
+				}
 			}
 		}
 	}
@@ -1245,11 +1255,13 @@ int emoai_RRC_measurements (
 	if (repConf_id > 0) {
 		req->r_conf->reportconfid = repConf_id;
 	} else if (repConf_id == 0) {
-		for (int i = 0; i < MAX_MEAS_CONFIG; i++) {
-			if (ue->ue_context.ReportConfig[i] == NULL) {
-				repConf_id = i + 1;
-				req->r_conf->reportconfid = repConf_id;
-				break;
+		if (ue->ue_context.ReportConfig != NULL) {
+			for (int i = 0; i < MAX_MEAS_CONFIG; i++) {
+				if (ue->ue_context.ReportConfig[i] == NULL) {
+					repConf_id = i + 1;
+					req->r_conf->reportconfid = repConf_id;
+					break;
+				}
 			}
 		}
 	}

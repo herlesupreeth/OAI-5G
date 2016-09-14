@@ -60,10 +60,6 @@ extern UE_MAC_INST *UE_mac_inst;
 # include "intertask_interface.h"
 #endif
 
-#if defined (EMAGE_AGENT)
-#   include "emoai_config.h"
-#endif
-
 //#define RRC_DATA_REQ_DEBUG
 #define DEBUG_RRC 1
 
@@ -795,16 +791,6 @@ void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP,
                    rntiP);
 
   if (ue_context_p != NULL) {
-    #if defined (EMAGE_AGENT)
-      /* OAI does not support RRC_IDLE state for now, its either RRC Connected
-       * state or UE is disconnected from the network.
-       */
-      ue_context_p->ue_context.Status = RRC_INACTIVE;
-      /* If UE is in inactive state, trigger the UEs ID report if it exists.
-       */
-      emoai_trig_UEs_ID_report();
-      emoai_handle_ue_down(&rntiP);
-    #endif
     LOG_I(RRC,"Frame %d, Subframe %d: UE %x UL failure, activating timer\n",frameP,subframeP,rntiP);
     ue_context_p->ue_context.ul_failure_timer=1;
   }
