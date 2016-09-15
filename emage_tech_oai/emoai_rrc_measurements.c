@@ -207,11 +207,15 @@ int rrc_meas_comp_trigg (
 
 struct rrc_meas_trigg* rrc_meas_get_trigg (uint32_t rnti, int measId) {
 
-	struct rrc_meas_trigg ctxt;
-	memset(&ctxt, 0, sizeof(struct rrc_meas_trigg));
-	ctxt.rnti = rnti;
-	ctxt.measId = measId;
-	return RB_FIND(rrc_meas_trigg_tree, &rrc_meas_t_head, &ctxt);
+	struct rrc_meas_trigg *ctxt = NULL;
+
+	/* Compare with each of the RRC measurement trigger context stored. */
+	RB_FOREACH(ctxt, rrc_meas_trigg_tree, &rrc_meas_t_head) {
+		if ((ctxt->rnti == rnti) && (ctxt->measId == measId)) {
+			return ctxt;
+		}
+	}
+	return NULL;
 }
 
 int rrc_meas_rem_trigg (struct rrc_meas_trigg* ctxt) {
@@ -267,6 +271,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 /****** UNLOCK ****************************************************************/
 
 	if (ctxt == NULL) {
+
 		emoai_RRC_meas_reconf(p->rnti, -1, p->meas->measId, NULL, NULL);
 		/* Free the measurement report received from UE. */
 		ASN_STRUCT_FREE(asn_DEF_MeasResults, p->meas);
@@ -282,10 +287,6 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 	if (em_has_trigger(b_id, ctxt->t_id, EM_RRC_MEAS_TRIGGER) == 0) {
 
 		emoai_RRC_meas_reconf(p->rnti, -1, p->meas->measId, NULL, NULL);
-		/* Free the measurement report received from UE. */
-		ASN_STRUCT_FREE(asn_DEF_MeasResults, p->meas);
-		/* Free the params. */
-		free(p);
 		/* Trigger does not exist in agent so remove from wrapper as well. */
 		if (rrc_meas_rem_trigg(ctxt) < 0) {
 			goto error;
@@ -313,6 +314,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 			&header) != 0)
 		goto error;
 
+	reply->head = header;
 	reply->event_types_case = EMAGE_MSG__EVENT_TYPES_TE;
 
 	/* RRC measurement for now supports only triggered event based replies. */
@@ -348,16 +350,22 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 	repl->has_pcell_rsrp = 1;
 	repl->has_pcell_rsrq = 1;
 	#ifdef Rel10
+		repl->has_pcell_rsrp = 1;
+		repl->has_pcell_rsrq = 1;
 		repl->pcell_rsrp = RSRP_meas_mapping[meas->
 													measResultPCell.rsrpResult];
 		repl->pcell_rsrq = RSRQ_meas_mapping[meas->
 													measResultPCell.rsrqResult];
 	#else
+		repl->has_pcell_rsrp = 1;
+		repl->has_pcell_rsrq = 1;
 		repl->pcell_rsrp = RSRP_meas_mapping[meas->
 												measResultServCell.rsrpResult];
 		repl->pcell_rsrq = RSRQ_meas_mapping[meas->
 												measResultServCell.rsrqResult];
 	#endif
+
+	repl->neigh_meas = NULL;
 
 	if (meas->measResultNeighCells != NULL) {
 		/*
@@ -389,7 +397,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 					eutra_meas[i]->has_phys_cell_id = 1;
 					eutra_meas[i]->phys_cell_id = meas_list.list.array[i]->
 																	physCellId;
-					EMLOG("PCI of Target %d", eutra_meas[i]->phys_cell_id);
+					// EMLOG("PCI of Target %d", eutra_meas[i]->phys_cell_id);
 					/* Check for Reference signal measurements. */
 					if (&(meas_list.list.array[i]->measResult)) {
 						/* Initialize Ref. signal measurements. */
@@ -401,14 +409,14 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 							meas_result->has_rsrp = 1;
 							meas_result->rsrp = RSRP_meas_mapping[*(meas_list.
 										list.array[i]->measResult.rsrpResult)];
-							EMLOG("RSRP of Target %d", meas_result->rsrp);
+							// EMLOG("RSRP of Target %d", meas_result->rsrp);
 						}
 
 						if (meas_list.list.array[i]->measResult.rsrqResult) {
 							meas_result->has_rsrq = 1;
 							meas_result->rsrq = RSRQ_meas_mapping[*(meas_list.
 										list.array[i]->measResult.rsrqResult)];
-							EMLOG("RSRQ of Target %d", meas_result->rsrq);
+							// EMLOG("RSRQ of Target %d", meas_result->rsrq);
 						}
 						eutra_meas[i]->meas_result = meas_result;
 					}
@@ -508,6 +516,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 	mrrc_meas->repl = repl;
 	/* Attach RRC measurement message to triggered event message. */
 	te->mrrc_meas = mrrc_meas;
+	te->has_action = 0;
 	/* Attach the triggered event message to main message. */
 	reply->te = te;
 
@@ -794,7 +803,6 @@ int emoai_comp_EUTRA_repConf (RepConfEUTRA * req_rc, RepConfEUTRA * ctxt_rc) {
 	 * -1 -> invalid reportConfig request
 	 * 1 -> reportConfig objects exists
 	 */
-	int ret = 1;
 
 	if ((req_rc == NULL) || (ctxt_rc == NULL)) {
 		return -1;
@@ -827,6 +835,9 @@ int emoai_comp_EUTRA_repConf (RepConfEUTRA * req_rc, RepConfEUTRA * ctxt_rc) {
 	}
 	if ((req_rc->has_rep_amount == 1) &&
 								(req_rc->rep_amount != ctxt_rc->rep_amount)) {
+		return 0;
+	}
+	if (req_rc->conf__eutra_case != ctxt_rc->conf__eutra_case) {
 		return 0;
 	}
 	if ((req_rc->conf__eutra_case == REP_CONF__EUTRA__CONF__EUTRA_PERIODICAL)
@@ -963,7 +974,7 @@ int emoai_comp_EUTRA_repConf (RepConfEUTRA * req_rc, RepConfEUTRA * ctxt_rc) {
 		}
 	}
 
-	return ret;
+	return 1;
 }
 
 int rrc_meas_val_trigg_repConf (
@@ -1182,14 +1193,14 @@ int emoai_RRC_measurements (
 	/* Check if UE is still active in the system. */
 	ue_id = find_UE_id(DEFAULT_ENB_ID, req->rnti);
 	if (ue_id < 0) {
-		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		req_status = STATS_REQ_STATUS__SREQS_FAILURE;
 		goto req_error;
 	}
 
 	/* Make all the validation of the request message. */
 	measObj_id = rrc_meas_val_trigg_measObj(ue_id, req->m_obj);
 	if (measObj_id == -1) {
-		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		req_status = STATS_REQ_STATUS__SREQS_FAILURE;
 		goto req_error;
 	}
 	if (req->m_obj->meas_obj_case == MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA) {
@@ -1198,12 +1209,12 @@ int emoai_RRC_measurements (
 										req->m_obj->measobj_eutra->carrier_freq,
 										req->r_conf);
 		if (repConf_id == -1) {
-			req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+			req_status = STATS_REQ_STATUS__SREQS_FAILURE;
 			goto req_error;
 		}
 	} else {
 		/* Not supporting measurements other than EUTRA measurements. */
-		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		req_status = STATS_REQ_STATUS__SREQS_FAILURE;
 		goto req_error;
 	}
 
@@ -1220,7 +1231,7 @@ int emoai_RRC_measurements (
 	}
 	/* At this point no measurement slots are not free. */
 	if (meas_id == 0) {
-		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		req_status = STATS_REQ_STATUS__SREQS_FAILURE;
 		goto req_error;
 	}
 	/* Get measurement object id. */
@@ -1232,7 +1243,7 @@ int emoai_RRC_measurements (
 		 * same EARFCN cannot exist (measObj limitation).
 		 */
 		if (rrc_meas_trigg_update_measObj(measObj_id, req->m_obj) < 0) {
-			req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+			req_status = STATS_REQ_STATUS__SREQS_FAILURE;
 			goto req_error;
 		}
 	} else if (measObj_id == 0) {
@@ -1248,7 +1259,7 @@ int emoai_RRC_measurements (
 	}
 	/* At this point no measurement object slots are free. */
 	if (measObj_id == 0) {
-		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		req_status = STATS_REQ_STATUS__SREQS_FAILURE;
 		goto req_error;
 	}
 	/* Get report configuration object id. */
@@ -1267,7 +1278,7 @@ int emoai_RRC_measurements (
 	}
 	/* At this point no report configuration object slots are free. */
 	if (repConf_id == 0) {
-		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		req_status = STATS_REQ_STATUS__SREQS_FAILURE;
 		goto req_error;
 	}
 
@@ -1300,7 +1311,7 @@ int emoai_RRC_measurements (
 			req->r_conf->rc_eutra->rep_amount = REPORT_AMOUNT__REPAMT_infinity;
 		}
 	} else {
-		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		req_status = STATS_REQ_STATUS__SREQS_FAILURE;
 		goto req_error;
 	}
 
@@ -1311,7 +1322,7 @@ int emoai_RRC_measurements (
 							-1,
 							req->m_obj,
 							req->r_conf) < 0) {
-		req_status = CONF_REQ_STATUS__CREQS_FAILURE;
+		req_status = STATS_REQ_STATUS__SREQS_FAILURE;
 		goto req_error;
 	}
 
@@ -1329,6 +1340,11 @@ int emoai_RRC_measurements (
 req_error:
 	/* Set the request status. Success or failure. */
 	repl->status = req_status;
+	repl->has_measid = 1;
+	repl->measid = meas_id;
+	repl->has_pcell_rsrp = 0;
+	repl->has_pcell_rsrq = 0;
+	repl->neigh_meas = NULL;
 
 	/* Attach the RRC measurement reply message to RRC measurements message. */
 	mrrc_meas->repl = repl;
@@ -1344,11 +1360,11 @@ req_error:
 		return -1;
 	}
 	/* Form the main Emage message here. */
-	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
-	emage_msg__init(*reply);
-	(*reply)->head = header;
+	EmageMsg *reply_msg = (EmageMsg *) malloc(sizeof(EmageMsg));
+	emage_msg__init(reply_msg);
+	reply_msg->head = header;
 	/* Assign event type same as request message. */
-	(*reply)->event_types_case = request->event_types_case;
+	reply_msg->event_types_case = request->event_types_case;
 	/* RRC measurement for now supports only triggered event based replies. */
 	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_TE) {
 		/* Its a triggered event reply. */
@@ -1356,16 +1372,17 @@ req_error:
 		trigger_event__init(te);
 
 		/* Fill the trigger event message. */
+		te->has_action = 0;
 		te->events_case = TRIGGER_EVENT__EVENTS_M_RRC_MEAS;
 		/* Attach RRC measurement message to triggered event message. */
 		te->mrrc_meas = mrrc_meas;
-		(*reply)->te = te;
+		reply_msg->te = te;
 	} else {
 		return -1;
 	}
 
 	/* Send the response to controller. */
-	em_send(emoai_get_b_id(), *reply);
+	em_send(emoai_get_b_id(), reply_msg);
 
 	return 0;
 }
@@ -1858,7 +1875,7 @@ int emoai_RRC_meas_reconf (
 					(struct SPS_Config*)NULL,
 #ifdef EXMIMO_IOT
 					NULL, NULL, NULL, NULL,NULL,
-					#else
+#else
 					NULL,
 					mo_add_l,
 					mo_rem_l,
