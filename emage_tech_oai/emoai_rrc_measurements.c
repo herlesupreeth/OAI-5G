@@ -20,6 +20,8 @@
 #include "emoai_rrc_measurements.h"
 
 #include "RRC/LITE/extern.h"
+#include "openair2/LAYER2/MAC/extern.h"
+#include "platform_types.h"
 #include "msc.h"
 #include "asn1_msg.h"
 
@@ -1392,55 +1394,6 @@ int emoai_store_rrc_eNB_mui (mui_t * mui) {
 	return 0;
 }
 
-int emoai_store_UE_RRC_pctxt (uint32_t rnti, protocol_ctxt_t * ctxt_pP) {
-
-	int m;
-	int num_ues = emoai_get_num_ues();
-	for (m = 0; m < num_ues; m++) {
-		if (&UE_RRC_proto_ctxt_list[m]) {
-			if (UE_RRC_proto_ctxt_list[m].rnti == rnti) {
-				break;
-			}
-		} else {
-			UE_RRC_proto_ctxt_list = realloc(UE_RRC_proto_ctxt_list,
-									num_ues * sizeof(struct UE_RRC_proto_ctxt));
-			UE_RRC_proto_ctxt_list[m].rnti = rnti;
-			UE_RRC_proto_ctxt_list[m].UE_RRC_ctxt = ctxt_pP;
-			break;
-		}
-	}
-	return 0;
-}
-
-int emoai_rem_UE_RRC_pctxt (uint32_t rnti) {
-
-	int ret = -1, m, j;
-	int num_ues = emoai_get_num_ues();
-	for (m = 0; m < num_ues; m++){
-		if (&UE_RRC_proto_ctxt_list[m] &&
-									UE_RRC_proto_ctxt_list[m].rnti == rnti) {
-			for (j = m; j < num_ues - 1; j++) {
-				UE_RRC_proto_ctxt_list[j] = UE_RRC_proto_ctxt_list[j+1];
-			}
-			ret = 0;
-			break;
-		}
-	}
-	return ret;
-}
-
-protocol_ctxt_t* emoai_get_UE_RRC_pctxt (uint32_t rnti) {
-
-	int m;
-	for (m = 0;m < emoai_get_num_ues(); m++) {
-		if (&UE_RRC_proto_ctxt_list[m] &&
-									UE_RRC_proto_ctxt_list[m].rnti == rnti) {
-			return UE_RRC_proto_ctxt_list[m].UE_RRC_ctxt;
-		}
-	}
-	return NULL;
-}
-
 int emoai_RRC_meas_reconf (
 	uint32_t rnti,
 	int measId_add,
@@ -1452,7 +1405,6 @@ int emoai_RRC_meas_reconf (
 	uint8_t buffer[RRC_BUF_SIZE];
 	uint16_t size;
 	uint32_t ue_id;
-	protocol_ctxt_t *ctxt;
 
 	MeasIdToRemoveList_t *mi_rem_l = NULL;
 	MeasObjectToRemoveList_t *mo_rem_l = NULL;
@@ -1477,9 +1429,8 @@ int emoai_RRC_meas_reconf (
 		goto error;
 	}
 
-	ctxt = emoai_get_UE_RRC_pctxt(rnti);
 	/* Get the UE context which holds all the measurement configuration info. */
-	struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
+	struct rrc_eNB_ue_context_s *ue = emoai_get_ue_context(ue_id);
 
 	if (ue == NULL) {
 		goto error;
@@ -1865,10 +1816,25 @@ int emoai_RRC_meas_reconf (
 
 	memset(buffer, 0, RRC_BUF_SIZE);
 
+	/* Get current frame and subframe number. */
+	eNB_MAC_INST *eNB = &eNB_mac_inst[DEFAULT_ENB_ID];
+
+	struct protocol_ctxt_s emage_eNB_RRC_UE_ctxt;
+	memset(&emage_eNB_RRC_UE_ctxt, 0, sizeof(emage_eNB_RRC_UE_ctxt));
+
+	PROTOCOL_CTXT_SET_BY_MODULE_ID(&emage_eNB_RRC_UE_ctxt,
+		DEFAULT_ENB_ID,
+		ENB_FLAG_YES,
+		rnti,
+		eNB->frame,
+		eNB->subframe,
+		DEFAULT_ENB_ID);
+
 	size = do_RRCConnectionReconfiguration(
-					ctxt,
+					&emage_eNB_RRC_UE_ctxt,
 					buffer,
-					rrc_eNB_get_next_transaction_identifier(ctxt->module_id),
+					rrc_eNB_get_next_transaction_identifier(
+											emage_eNB_RRC_UE_ctxt.module_id),
 					(SRB_ToAddModList_t*)NULL,
 					(DRB_ToAddModList_t*)NULL,
 					(DRB_ToReleaseList_t*)NULL,
@@ -1903,13 +1869,13 @@ int emoai_RRC_meas_reconf (
 		buffer,
 		size,
 		MSC_AS_TIME_FMT" rrcConnectionReconfiguration UE %x MUI %d size %u",
-		MSC_AS_TIME_ARGS(ctxt),
+		MSC_AS_TIME_ARGS(&emage_eNB_RRC_UE_ctxt),
 		ue_context_pP->ue_context.rnti,
 		*emoai_rrc_eNB_mui,
 		size);
 
 	rrc_data_req(
-		ctxt,
+		&emage_eNB_RRC_UE_ctxt,
 		DCCH,
 		*emoai_rrc_eNB_mui++,
 		SDU_CONFIRM_NO,
@@ -1923,6 +1889,7 @@ error:
 	EMLOG("Error in reconfiguration of UE RRC measurements! ");
 	return -1;
 }
+
 
 
 

@@ -22,7 +22,7 @@
 #include "emoai_rrc_measurements.h"
 
 #include "RRC/LITE/extern.h"
-#include "LAYER2/MAC/extern.h"
+#include "openair2/LAYER2/MAC/extern.h"
 #include "openair1/PHY/extern.h"
 
 int emoai_create_new_thread (void * (*func)(void *), void * arg) {
@@ -408,10 +408,6 @@ int emoai_handle_ue_down (uint32_t * rnti) {
 	 * particular UE.
 	 */
 	rrc_meas_rem_ue_all_trigg(*rnti);
-
-	/* If UE is in inactive state, remove the UE RRC protocol context stored.
-	*/
-	emoai_rem_UE_RRC_pctxt(*rnti);
 
 	return 0;
 }

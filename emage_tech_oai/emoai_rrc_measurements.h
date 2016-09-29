@@ -134,15 +134,6 @@ struct fdd_bands_dl_i {
 	float f_DLl;
 };
 
-/* Holds the context maintained at RRC OAI eNB for performing RRC operations.
- */
-struct UE_RRC_proto_ctxt {
-	/* RNTI of the UE. */
-	uint32_t rnti;
-	/* Context maintained at RRC OAI eNB for each UE. */
-	protocol_ctxt_t * UE_RRC_ctxt;
-};
-
 /* Get DL frequency from EARFCN number for FDD bands.
  */
 float emoai_get_fdd_band_dl_freq (int band_array_index, uint32_t earfcn);
@@ -247,21 +238,6 @@ int emoai_RRC_measurements (
  * This is used to in lower layer signalling. (OAI specific)
  */
 int emoai_store_rrc_eNB_mui (mui_t * mui);
-
-/* Stores the pointer to protocol context maintained in RRC eNB of OAI for
- * each UE. This is used for carrying of RRC stack operations. (OAI specific)
- */
-int emoai_store_UE_RRC_pctxt (uint32_t rnti, protocol_ctxt_t * ctxt_pP);
-
-/* Removes the stored pointer to protocol context for particular UE.
- * (OAI specific)
- */
-int emoai_rem_UE_RRC_pctxt (uint32_t rnti);
-
-/* Fetches the stored pointer to protocol context for particular UE.
- * (OAI specific)
- */
-protocol_ctxt_t* emoai_get_UE_RRC_pctxt (uint32_t rnti);
 
 /* Standard RRC reconfiguration stack operation for a UE in order to reconfigure
  * its RRC measurements.

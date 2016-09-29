@@ -4403,7 +4403,6 @@ rrc_eNB_decode_dcch(
            * Also, trigger the UEs ID report if it exists.
            */
           emoai_trig_UEs_ID_report();
-          emoai_store_UE_RRC_pctxt(rnti, ctxt_pP);
           emoai_trig_RRC_meas_conf_report(&rnti);
           /* Create the thread where the triggered event will run. */
           // if (ue_context_p->ue_context.MeasId[0] == NULL) {
