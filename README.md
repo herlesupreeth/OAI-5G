@@ -11,10 +11,9 @@ OpenAirInterface is under OpenAirInterface Software Alliance license.
 
 Currently supported messages between OAI-5G and SDN Controller:
  * Hello
+ * UEs identifier request and reply messages
  * RRC measurements, request and reply messages
- * Limited layer 2 statistics, request and reply messages
- * Limited OAI eNB configuration, request and reply messages
- * Limited UE configuration, request and reply messages
+ * RRC measurements configuration request and reply messages
 
 Pre-requisites
 ==============
@@ -41,7 +40,7 @@ Hardware:
 Software:
  * Latest OAI eNB code from `develop` branch
  * Latest Openair-cn code from tag `v0.3.2`
- * protoc (Version 3.0.0)
+ * protoc (Version 3.1.0)
  * protobuf-c (Version 1.2.1)
 
 Download & Install Instructions
