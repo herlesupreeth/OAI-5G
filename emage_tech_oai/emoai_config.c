@@ -141,17 +141,19 @@ int emoai_UEs_ID_report (
 	uint32_t *active_rnti = NULL;
 	uint32_t *inactive_rnti = NULL;
 
-	for (i = 0; i < emoai_get_num_ues(); i++) {
-		if (emoai_get_ue_state(i) > RRC_STATE__RS_RRC_INACTIVE) {
-			++n_active_rnti;
-			active_rnti = (uint32_t *) realloc(active_rnti, n_active_rnti *
+	for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
+		if (emoai_get_ue_crnti(i) != NOT_A_RNTI) {
+			if (emoai_get_ue_state(i) > RRC_STATE__RS_RRC_INACTIVE) {
+				++n_active_rnti;
+				active_rnti = (uint32_t *) realloc(active_rnti, n_active_rnti *
 															sizeof(uint32_t));
-			active_rnti[n_active_rnti - 1] = emoai_get_ue_crnti(i);
-		} else {
-			++n_inactive_rnti;
-			inactive_rnti = (uint32_t *) realloc(inactive_rnti,
+				active_rnti[n_active_rnti - 1] = emoai_get_ue_crnti(i);
+			} else {
+				++n_inactive_rnti;
+				inactive_rnti = (uint32_t *) realloc(inactive_rnti,
 											n_inactive_rnti * sizeof(uint32_t));
-			inactive_rnti[n_inactive_rnti - 1] = emoai_get_ue_crnti(i);
+				inactive_rnti[n_inactive_rnti - 1] = emoai_get_ue_crnti(i);
+			}
 		}
 	}
 
