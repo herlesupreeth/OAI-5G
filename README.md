@@ -3,7 +3,7 @@ OAI-5G
 
 OAI-5G is an integration of EmPOWER eNB Agent (developed by CREATE-NET) library with OpenAirInterface (developed by Eurecom). EmPOWER Agent (EMAge) provides an interface between OpenAirInterface (OAI) stack and SDN Controllers such as e.g. EmPOWER. This helps in exchange of statistics, measurements, configurations, and control the working of OAI stack by the SDN Controller.
 
-EmPOWER Agent (EMAge) is under the Apache License, Version 2.0.
+EmPOWER eNB Agent (EMAge) is under the Apache License, Version 2.0.
 
 OpenAirInterface is under OpenAirInterface Software Alliance license.
  * http://www.openairinterface.org/?page_id=101
@@ -24,7 +24,7 @@ Pre-requisites
  * pkg-config, a helper tool used when compiling applications and libraries
  * Protobuf-c, Google protocol buffer implementation for C (Version >= 1.2.1)
  * Pre-requisites of OpenAirInterface5G
- * Agent and Protocol library from EmPOWER Agent (EMAge)
+ * Agent and Protocol library from EmPOWER eNB Agent (EMAge)
 
 Testbed
 =======
@@ -65,6 +65,7 @@ cd ../agent
 make
 sudo make install
 ```
+Create a configuration file by the name `agent.conf` and placed it in the `/etc/empower` directory. An example configuration file is provided in the folder `conf/empower` of EmPOWER eNB Agent repository.
 
 Download and build OAI-5G:
 ```
@@ -77,11 +78,11 @@ Once OAI-5G has been successfully compiled, you are good to go !!!
 Running OAI-5G
 ==============
 
-Configuration file for EmPOWER eNB Agent `agent.conf` can be found in the `/etc/empower` directory. One can modify this file to specify the IP address and port number at which EmPOWER (or other SDN Controller) is running.
+Modify the configuration file for EmPOWER eNB Agent `agent.conf` to specify the IP address and port number at which EmPOWER (or other SDN Controller) is running.
 
 In order to run OAI-5G, follow the instructions mentioned in the section `Running eNB, EPC and HSS` in the following link https://gitlab.eurecom.fr/oai/openairinterface5g/wikis/HowToConnectCOTSUEwithOAIeNB.
 
-The EmPOWER agent can be enabled or disabled by setting or unsetting the `EMAGE_AGENT` flag in `CMakeLists.txt` file `empower-openairinterface/cmake_targets/CMakeLists.txt`.
+The EmPOWER eNB agent can be enabled or disabled by setting or unsetting the `EMAGE_AGENT` flag in `CMakeLists.txt` file `empower-openairinterface/cmake_targets/CMakeLists.txt`.
 
 
 
