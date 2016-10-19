@@ -1706,7 +1706,7 @@ rrc_eNB_generate_defaultRRCConnectionReconfiguration(
   // Also 8.1.2.1 UE measurement capability ETSI TS 136 133
   measGapConfig->present = MeasGapConfig_PR_setup;
   measGapConfig->choice.setup.gapOffset.present = MeasGapConfig__setup__gapOffset_PR_gp1;
-  measGapConfig->choice.setup.gapOffset.choice.gp1 = 36;
+  measGapConfig->choice.setup.gapOffset.choice.gp1 = 34;
   // Add measGapConfig to ue_context
   ue_context_pP->ue_context.measGapConfig = measGapConfig;
 

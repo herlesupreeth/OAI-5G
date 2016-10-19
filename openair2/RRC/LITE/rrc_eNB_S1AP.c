@@ -63,6 +63,9 @@
 #include "gtpv1u_eNB_task.h"
 #include "RRC/LITE/rrc_eNB_GTPV1U.h"
 
+#include "TLVDecoder.h"
+#include "S1ap-NAS-PDU.h"
+
 /* Value to indicate an invalid UE initial id */
 static const uint16_t UE_INITIAL_ID_INVALID = 0;
 
@@ -533,12 +536,90 @@ rrc_eNB_send_S1AP_UPLINK_NAS(
       pdu_length = dedicatedInfoType->choice.dedicatedInfoNAS.size;
       pdu_buffer = dedicatedInfoType->choice.dedicatedInfoNAS.buf;
 
-      msg_p = itti_alloc_new_message (TASK_RRC_ENB, S1AP_UPLINK_NAS);
-      S1AP_UPLINK_NAS (msg_p).eNB_ue_s1ap_id = ue_context_pP->ue_context.eNB_ue_s1ap_id;
-      S1AP_UPLINK_NAS (msg_p).nas_pdu.length = pdu_length;
-      S1AP_UPLINK_NAS (msg_p).nas_pdu.buffer = pdu_buffer;
+      /* IMSI extraction start*/
 
-      itti_send_msg_to_task (TASK_S1AP, ctxt_pP->instance, msg_p);
+      // xer_fprint(stdout, &asn_DEF_DedicatedInfoNAS, (void *)&dedicatedInfoType->choice.dedicatedInfoNAS);
+
+      int id_resp_imei_flag = 0;
+      nas_message_t nas_msg;
+      memset(&nas_msg, 0, sizeof(nas_message_t));
+
+      int size = 0;
+      uint32_t pdu_len = pdu_length;
+      uint8_t *pdu_buff = malloc(pdu_len * sizeof(uint8_t));
+      memcpy(pdu_buff, pdu_buffer, pdu_len);
+
+      nas_message_security_header_t      *header = &nas_msg.header;
+      //  Decode the first octet of the header (security header type or EPS bearer identity, and protocol discriminator)
+      DECODE_U8((char *) pdu_buff, *(uint8_t*) (header), size);
+
+      /* Decode NAS message */
+      if (header->security_header_type <= SECURITY_HEADER_TYPE_INTEGRITY_PROTECTED &&
+          header->protocol_discriminator == EPS_MOBILITY_MANAGEMENT_MESSAGE &&
+          pdu_len > NAS_MESSAGE_SECURITY_HEADER_SIZE) {
+
+        if (header->security_header_type != SECURITY_HEADER_TYPE_NOT_PROTECTED) {
+          /* Decode the message authentication code */
+          DECODE_U32((char *) pdu_buff+size, header->message_authentication_code, size);
+          /* Decode the sequence number */
+          DECODE_U8((char *) pdu_buff+size, header->sequence_number, size);
+        }
+
+        if (size > 1) {
+          pdu_buff += size;
+          pdu_len -= size;
+        }
+
+        /* Decode plain NAS message */
+        EMM_msg *e_msg = &nas_msg.plain.emm;
+        emm_msg_header_t *emm_header = &e_msg->header;
+
+        /* First decode the EMM message header */
+        int e_head_size = 0;
+
+        /* Check the buffer length */
+        if (pdu_len > sizeof(emm_msg_header_t)) {
+
+          /* Decode the security header type and the protocol discriminator */
+          DECODE_U8(pdu_buff + e_head_size, *(uint8_t *)(emm_header), e_head_size);
+          /* Decode the message type */
+          DECODE_U8(pdu_buff + e_head_size, emm_header->message_type, e_head_size);
+
+          /* Check the protocol discriminator */
+          if (emm_header->protocol_discriminator == EPS_MOBILITY_MANAGEMENT_MESSAGE) {
+
+            pdu_buff += e_head_size;
+            pdu_len -= e_head_size;
+
+            LOG_W(RRC, "EMM-MSG UL  - Message Type 0x%02x\n", emm_header->message_type);
+
+            if (emm_header->message_type == IDENTITY_RESPONSE) {
+              int decode_result = decode_identity_response(&e_msg->identity_response, pdu_buff, pdu_len);
+
+              if (e_msg->identity_response.mobileidentity.imei.typeofidentity == MOBILE_IDENTITY_IMEI) {
+                id_resp_imei_flag = 1;
+              }
+            }
+
+            pdu_buff -= e_head_size;
+            if (size > 1) {
+              pdu_buff -= size;
+            }
+          }
+        }
+      }
+
+      free(pdu_buff);
+
+      /* IMSI extraction end*/
+
+      if (!id_resp_imei_flag) {
+        msg_p = itti_alloc_new_message (TASK_RRC_ENB, S1AP_UPLINK_NAS);
+        S1AP_UPLINK_NAS (msg_p).eNB_ue_s1ap_id = ue_context_pP->ue_context.eNB_ue_s1ap_id;
+        S1AP_UPLINK_NAS (msg_p).nas_pdu.length = pdu_length;
+        S1AP_UPLINK_NAS (msg_p).nas_pdu.buffer = pdu_buffer;
+        itti_send_msg_to_task (TASK_S1AP, ctxt_pP->instance, msg_p);
+      }
     }
   }
 #else
@@ -561,14 +642,96 @@ rrc_eNB_send_S1AP_UPLINK_NAS(
 
         if (ulInformationTransferR8->dedicatedInfoType.
         present ==
-        ULInformationTransfer_r8_IEs__dedicatedInfoType_PR_dedicatedInfoNAS)
-          s1ap_eNB_new_data_request (mod_id, ue_index,
-          ulInformationTransferR8->
-          dedicatedInfoType.choice.
-          dedicatedInfoNAS.buf,
-          ulInformationTransferR8->
-          dedicatedInfoType.choice.
-          dedicatedInfoNAS.size);
+        ULInformationTransfer_r8_IEs__dedicatedInfoType_PR_dedicatedInfoNAS) {
+
+          /* IMSI extraction start*/
+
+          // xer_fprint(stdout, &asn_DEF_DedicatedInfoNAS, (void *)&dedicatedInfoType->choice.dedicatedInfoNAS);
+
+          int id_resp_imei_flag = 0;
+
+          nas_message_t nas_msg;
+          memset(&nas_msg, 0, sizeof(nas_message_t));
+
+          int size = 0;
+          uint32_t pdu_len = ulInformationTransferR8->dedicatedInfoType.choice.dedicatedInfoNAS.size;
+          uint8_t *pdu_buff = malloc(pdu_len * sizeof(uint8_t));
+          memcpy(pdu_buff, ulInformationTransferR8->dedicatedInfoType.choice.dedicatedInfoNAS.buf, pdu_len);
+
+          nas_message_security_header_t      *header = &nas_msg.header;
+          //  Decode the first octet of the header (security header type or EPS bearer identity, and protocol discriminator)
+          DECODE_U8((char *) pdu_buff, *(uint8_t*) (header), size);
+
+          /* Decode NAS message */
+          if (header->security_header_type <= SECURITY_HEADER_TYPE_INTEGRITY_PROTECTED &&
+              header->protocol_discriminator == EPS_MOBILITY_MANAGEMENT_MESSAGE &&
+              pdu_len > NAS_MESSAGE_SECURITY_HEADER_SIZE) {
+
+            if (header->security_header_type != SECURITY_HEADER_TYPE_NOT_PROTECTED) {
+              /* Decode the message authentication code */
+              DECODE_U32((char *) pdu_buff+size, header->message_authentication_code, size);
+              /* Decode the sequence number */
+              DECODE_U8((char *) pdu_buff+size, header->sequence_number, size);
+            }
+
+            if (size > 1) {
+              pdu_buff += size;
+              pdu_len -= size;
+            }
+
+            /* Decode plain NAS message */
+            EMM_msg *e_msg = &nas_msg.plain.emm;
+            emm_msg_header_t *emm_header = &e_msg->header;
+
+            /* First decode the EMM message header */
+            int e_head_size = 0;
+
+            /* Check the buffer length */
+            if (pdu_len > sizeof(emm_msg_header_t)) {
+
+              /* Decode the security header type and the protocol discriminator */
+              DECODE_U8(pdu_buff + e_head_size, *(uint8_t *)(emm_header), e_head_size);
+              /* Decode the message type */
+              DECODE_U8(pdu_buff + e_head_size, emm_header->message_type, e_head_size);
+
+              /* Check the protocol discriminator */
+              if (emm_header->protocol_discriminator == EPS_MOBILITY_MANAGEMENT_MESSAGE) {
+
+                pdu_buff += e_head_size;
+                pdu_len -= e_head_size;
+
+                LOG_W(RRC, "EMM-MSG UL  - Message Type 0x%02x\n", emm_header->message_type);
+
+                if (emm_header->message_type == IDENTITY_RESPONSE) {
+                  int decode_result = decode_identity_response(&e_msg->identity_response, pdu_buff, pdu_len);
+
+                  if (e_msg->identity_response.mobileidentity.imei.typeofidentity == MOBILE_IDENTITY_IMEI) {
+                    id_resp_imei_flag = 1;
+                  }
+                }
+
+                pdu_buff -= e_head_size;
+                if (size > 1) {
+                  pdu_buff -= size;
+                }
+              }
+            }
+          }
+
+          free(pdu_buff);
+
+          /* IMSI extraction end*/
+
+          if (!id_resp_imei_flag) {
+            s1ap_eNB_new_data_request (mod_id, ue_index,
+                                      ulInformationTransferR8->
+                                      dedicatedInfoType.choice.
+                                      dedicatedInfoNAS.buf,
+                                      ulInformationTransferR8->
+                                      dedicatedInfoType.choice.
+                                      dedicatedInfoNAS.size);
+          }
+        }
       }
     }
   }
@@ -852,7 +1015,91 @@ rrc_eNB_process_S1AP_DOWNLINK_NAS(
 		  length,
 		  buffer,
 		  PDCP_TRANSMISSION_MODE_CONTROL);
-    
+
+    /* Modify the identity request here to ask for IMEI. */
+
+    // xer_fprint(stdout, &asn_DEF_S1ap_NAS_PDU, (void *)&S1AP_DOWNLINK_NAS (msg_p).nas_pdu.buffer);
+    nas_message_t nas_msg;
+    memset(&nas_msg, 0, sizeof(nas_message_t));
+
+    int size = 0;
+    uint32_t pdu_length = S1AP_DOWNLINK_NAS (msg_p).nas_pdu.length;
+    uint8_t *pdu_buffer = S1AP_DOWNLINK_NAS (msg_p).nas_pdu.buffer;
+    uint32_t pdu_len_cp = S1AP_DOWNLINK_NAS (msg_p).nas_pdu.length;
+    uint8_t *pdu_buff_cp = malloc(pdu_len_cp * sizeof(uint8_t));
+    memcpy(pdu_buff_cp, S1AP_DOWNLINK_NAS (msg_p).nas_pdu.buffer, pdu_len_cp);
+
+    nas_message_security_header_t      *header = &nas_msg.header;
+    //  Decode the first octet of the header (security header type or EPS bearer identity, and protocol discriminator)
+    DECODE_U8((char *) pdu_buff_cp, *(uint8_t*) (header), size);
+
+    /* Decode NAS message */
+    if (header->security_header_type < SECURITY_HEADER_TYPE_INTEGRITY_PROTECTED &&
+        header->protocol_discriminator == EPS_MOBILITY_MANAGEMENT_MESSAGE) {
+
+      /* Decode plain NAS message */
+      EMM_msg *e_msg = &nas_msg.plain.emm;
+      emm_msg_header_t *emm_header = &e_msg->header;
+
+      /* First decode the EMM message header */
+      int e_head_size = 0;
+
+      /* Check the buffer length */
+      if (pdu_len_cp > sizeof(emm_msg_header_t)) {
+
+        /* Decode the security header type and the protocol discriminator */
+        DECODE_U8(pdu_buff_cp + e_head_size, *(uint8_t *)(emm_header), e_head_size);
+        /* Decode the message type */
+        DECODE_U8(pdu_buff_cp + e_head_size, emm_header->message_type, e_head_size);
+
+        /* Check the protocol discriminator */
+        if (emm_header->protocol_discriminator == EPS_MOBILITY_MANAGEMENT_MESSAGE) {
+
+          pdu_buff_cp += e_head_size;
+          pdu_len_cp -= e_head_size;
+
+          LOG_W(RRC, "EMM-MSG DL  - Message Type 0x%02x\n", emm_header->message_type);
+
+          if (emm_header->message_type == IDENTITY_REQUEST) {
+            int decode_result = decode_identity_request(&e_msg->identity_request, pdu_buff_cp, pdu_len_cp);
+
+            uint32_t imei_req_len;
+            uint8_t *imei_req_buff;
+
+            pdu_buffer[pdu_length - 1] |= 2;
+            pdu_buffer[pdu_length - 1] &= 0xFE;
+
+            xer_fprint(stdout, &asn_DEF_S1ap_NAS_PDU, (void *)&S1AP_DOWNLINK_NAS (msg_p).nas_pdu.buffer);
+
+            /* Create message for PDCP (DLInformationTransfer_t) */
+            imei_req_len = do_DLInformationTransfer (
+                               instance,
+                               &imei_req_buff,
+                               rrc_eNB_get_next_transaction_identifier (instance),
+                               pdu_length,
+                               pdu_buffer);
+
+            /* Transfer data to PDCP */
+            rrc_data_req (
+              &ctxt,
+              DCCH,
+              *rrc_eNB_mui++,
+              SDU_CONFIRM_NO,
+              imei_req_len,
+              imei_req_buff,
+              PDCP_TRANSMISSION_MODE_CONTROL);
+
+          }
+
+          pdu_buff_cp -= e_head_size;
+        }
+      }
+    }
+
+    free(pdu_buff_cp);
+
+    /* Modification ends here end*/
+
     return (0);
   }
 }
