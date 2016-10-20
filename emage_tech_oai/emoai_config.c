@@ -136,33 +136,42 @@ int emoai_UEs_ID_report (
 	UesIdRepl *repl = (UesIdRepl *) malloc(sizeof(UesIdRepl));
 	ues_id_repl__init(repl);
 
-	size_t n_active_rnti = 0;
-	size_t n_inactive_rnti = 0;
-	uint32_t *active_rnti = NULL;
-	uint32_t *inactive_rnti = NULL;
+	size_t n_active_ue_id = 0;
+	size_t n_inactive_ue_id = 0;
+	ActiveUe **active_ue_id = NULL;
+	InactiveUe **inactive_ue_id = NULL;
 
 	for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
 		if (emoai_get_ue_crnti(i) != NOT_A_RNTI) {
 			if (emoai_get_ue_state(i) > RRC_STATE__RS_RRC_INACTIVE) {
-				++n_active_rnti;
-				active_rnti = (uint32_t *) realloc(active_rnti, n_active_rnti *
-															sizeof(uint32_t));
-				active_rnti[n_active_rnti - 1] = emoai_get_ue_crnti(i);
+				++n_active_ue_id;
+				active_ue_id = realloc(active_ue_id, n_active_ue_id *
+															sizeof(ActiveUe *));
+				active_ue_id[n_active_ue_id - 1] = malloc(sizeof(ActiveUe));
+				active_ue__init(active_ue_id[n_active_ue_id - 1]);
+				active_ue_id[n_active_ue_id - 1]->rnti = emoai_get_ue_crnti(i);
+				active_ue_id[n_active_ue_id - 1]->imsi = emoai_get_ue_imsi(i);
 			} else {
-				++n_inactive_rnti;
-				inactive_rnti = (uint32_t *) realloc(inactive_rnti,
-											n_inactive_rnti * sizeof(uint32_t));
-				inactive_rnti[n_inactive_rnti - 1] = emoai_get_ue_crnti(i);
+				++n_inactive_ue_id;
+				inactive_ue_id = realloc(inactive_ue_id,
+									n_inactive_ue_id * sizeof(InactiveUe *));
+				inactive_ue_id[n_inactive_ue_id - 1] =
+													malloc(sizeof(InactiveUe));
+				inactive_ue__init(inactive_ue_id[n_inactive_ue_id - 1]);
+				inactive_ue_id[n_inactive_ue_id - 1]->rnti =
+														emoai_get_ue_crnti(i);
+				inactive_ue_id[n_inactive_ue_id - 1]->imsi =
+														emoai_get_ue_imsi(i);
 			}
 		}
 	}
 
 	/* Successful outcome of request. */
 	repl->status = CONF_REQ_STATUS__CREQS_SUCCESS;
-	repl->n_active_rnti = n_active_rnti;
-	repl->active_rnti = active_rnti;
-	repl->n_inactive_rnti = n_inactive_rnti;
-	repl->inactive_rnti = inactive_rnti;
+	repl->n_active_ue_id = n_active_ue_id;
+	repl->active_ue_id = active_ue_id;
+	repl->n_inactive_ue_id = n_inactive_ue_id;
+	repl->inactive_ue_id = inactive_ue_id;
 
 	Header *header;
 	/* Initialize header message. */

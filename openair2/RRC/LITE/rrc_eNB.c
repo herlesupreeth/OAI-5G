@@ -4505,13 +4505,13 @@ rrc_eNB_decode_dcch(
           LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT" UE State = RRC_CONNECTED \n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP));
           #ifdef EMAGE_AGENT
-            uint32_t rnti = ue_context_p->ue_context.rnti;
+            // uint32_t rnti = ue_context_p->ue_context.rnti;
             /* UE is in connected state, trigger the RRC measurement
              * configuration reply for the UE if trigger exists.
              * Also, trigger the UEs ID report if it exists.
              */
-            emoai_trig_UEs_ID_report();
-            emoai_trig_RRC_meas_conf_report(&rnti);
+            // emoai_trig_UEs_ID_report();
+            // emoai_trig_RRC_meas_conf_report(&rnti);
           #endif /* EMAGE_AGENT */
         }
       }

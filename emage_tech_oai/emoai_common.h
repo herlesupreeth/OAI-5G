@@ -95,6 +95,11 @@ int emoai_get_operating_band (ccid_t cc_id);
 uint32_t emoai_get_ue_crnti (ueid_t ue_id);
 
 /*
+ * Returns IMSI of UE intercepted at eNB.
+ */
+char* emoai_get_ue_imsi (ueid_t ue_id);
+
+/*
  * Fetches the template maintained for each UE in OAI.
  * This template holds UE context information.
  */
