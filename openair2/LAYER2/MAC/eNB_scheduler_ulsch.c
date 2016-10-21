@@ -753,69 +753,17 @@ void schedule_ulsch_rnti(module_id_t   module_idP,
       if (drop_ue==1)
         continue;
 
-      // MeasGap implementation
-      int gapOffset = mac_eNB_get_rrc_measGap_offset(module_idP, rnti);
-      int mgrp = mac_eNB_get_rrc_measGap_rep_period(module_idP, rnti);
-
-      if (gapOffset != -1 && mgrp != -1 &&
-                mac_eNB_get_rrc_status(module_idP, rnti) == RRC_RECONFIGURED) {
-
-        int T = (int) mgrp / 10;
-        int rcx_gapLength = 6;
-        int total_subfr = 10;
-        int total_sfn = 1024;
-        int sfnMODt = (int) (frameP % T);
-        int floor_gapOffsetDIV10 = (int) floor(gapOffset / 10);
-        int gapOffsetMOD10 = (int) (gapOffset % 10);
-        int PUSCH_timing = 0;
-        if (frame_parms->frame_type == FDD) {
-          /* 4ms after DCI transmission. */
-          PUSCH_timing = 4;
-        } else {
-          /* Maximum value among all TDD UL/DL configurations. */
-          /* Need to fix it as per UL/DL config. */
-          // PUSCH_timing = 7;
-        }
-        int measGapFlag = 0;
-
-        if (gapOffsetMOD10 < PUSCH_timing) {
-          int nxt_sfnMODt = (int) ((frameP + 1) % total_sfn) % T;
-          /* E.g. if gapOffset = 3, gp1, in SFN 23, don't schedule UE on
-           * 9th subframe and in SFN 24 don't schedule UE on subframes
-           * 1,2,3,4,5,6,7,8.
-           */
-          if ((sfnMODt == floor_gapOffsetDIV10) &&
-                              (subframeP < (gapOffsetMOD10 + rcx_gapLength))) {
-            measGapFlag = 1;
-          }
-          else if ((nxt_sfnMODt == floor_gapOffsetDIV10) &&
-              (subframeP >= ((gapOffsetMOD10 - PUSCH_timing) % total_subfr))) {
-            measGapFlag = 1;
-          }
-        }
-        else if (gapOffsetMOD10 >= PUSCH_timing) {
-          int pre_sfnModt = (int) ((frameP - 1) % total_sfn) % T;
-          /* E.g. if gapOffset = 5, gp1, in SFN 24, don't schedule UE on
-           * subframes 1,2,3,4,5,6,7,8,9 and in SFN 25 don't schedule UE on
-           * 0th subframe.
-           */
-          if ((sfnMODt == floor_gapOffsetDIV10) &&
-                              (subframeP >= (gapOffsetMOD10 - PUSCH_timing))) {
-            measGapFlag = 1;
-          }
-          else if ((pre_sfnModt == floor_gapOffsetDIV10) &&
-              (subframeP < ((gapOffsetMOD10 + rcx_gapLength) % total_subfr))) {
-            measGapFlag = 1;
-          }
-        }
-        if (measGapFlag == 1) {
-          add_ue_ulsch_info(module_idP,
-                            CC_id,
-                            UE_id,
-                            subframeP,
-                            S_UL_NONE);
-          continue;
-        }
+      if (is_measGap(module_idP,
+                     rnti,
+                     frame_parms->frame_type,
+                     frameP,
+                     subframeP) == 1) {
+        add_ue_ulsch_info(module_idP,
+                          CC_id,
+                          UE_id,
+                          subframeP,
+                          S_UL_NONE);
+        continue;
       }
 
       if (CCE_allocation_infeasible(module_idP,CC_id,0,subframeP,aggregation,rnti)) {

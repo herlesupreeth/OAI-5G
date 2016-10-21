@@ -387,6 +387,14 @@ mac_eNB_get_rrc_measGap_rep_period(
   const rnti_t      rntiP
 );
 
+int is_measGap(
+  const module_id_t         module_idP,
+  const rnti_t              rnti,
+  const lte_frame_type_t    frame_type,
+  const frame_t             frameP,
+  const sub_frame_t         subframeP
+);
+
 int
 mac_UE_get_rrc_status(
   const module_id_t Mod_idP,
