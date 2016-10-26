@@ -333,6 +333,8 @@ typedef struct eNB_RRC_UE_s {
   UE_EUTRA_Capability_t              *UE_EUTRA_Capability;
 
   char                                ue_imsi[16];
+  char                                plmn_id[7];
+
 
 #if defined(ENABLE_SECURITY)
   /* KeNB as derived from KASME received from EPC */
