@@ -962,7 +962,10 @@ rrc_eNB_send_S1AP_NAS_FIRST_REQ(
         if (r_mme->plmn_Identity != NULL) {
           if ((r_mme->plmn_Identity->mcc != NULL) && (r_mme->plmn_Identity->mcc->list.count > 0)) {
             /* Use first indicated PLMN MCC if it is defined */
-            S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mcc = *r_mme->plmn_Identity->mcc->list.array[0];
+            S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mcc = 0;
+            S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mcc += *r_mme->plmn_Identity->mcc->list.array[0] * 100;
+            S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mcc += *r_mme->plmn_Identity->mcc->list.array[1] * 10;
+            S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mcc += *r_mme->plmn_Identity->mcc->list.array[2];
             LOG_I(S1AP, "[eNB %d] Build S1AP_NAS_FIRST_REQ adding in s_TMSI: GUMMEI MCC %u ue %x\n",
                 ctxt_pP->module_id,
                 S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mcc,
@@ -971,7 +974,16 @@ rrc_eNB_send_S1AP_NAS_FIRST_REQ(
 
           if (r_mme->plmn_Identity->mnc.list.count > 0) {
             /* Use first indicated PLMN MNC if it is defined */
-            S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mnc = *r_mme->plmn_Identity->mnc.list.array[0];
+            S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mnc = 0;
+            if (r_mme->plmn_Identity->mnc.list.count > 2) {
+              S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mnc += *r_mme->plmn_Identity->mnc.list.array[0] * 100;
+              S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mnc += *r_mme->plmn_Identity->mnc.list.array[1] * 10;
+              S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mnc += *r_mme->plmn_Identity->mnc.list.array[2];
+            } else {
+              S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mnc += *r_mme->plmn_Identity->mnc.list.array[0] * 10;
+              S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mnc += *r_mme->plmn_Identity->mnc.list.array[1];
+            }
+            S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mnc_len = r_mme->plmn_Identity->mnc.list.count;
             LOG_I(S1AP, "[eNB %d] Build S1AP_NAS_FIRST_REQ adding in s_TMSI: GUMMEI MNC %u ue %x\n",
                   ctxt_pP->module_id,
                   S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mnc,
