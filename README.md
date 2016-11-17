@@ -29,7 +29,7 @@ Pre-requisites
 Testbed
 =======
 
-This software has been developed and tested on Linux, Ubuntu 14.04 LTS with 3.19.8-031908-lowlatency kernel. Our tested consists of OAI eNB, EPC and HSS running on a single host. But, the process is similar for environment with OAI EPC and HSS on a different host than the OAI eNB.
+This software has been developed and tested on Linux, Ubuntu 14.04 LTS with 3.19.8-031908-lowlatency and 4.8.0-040800-lowlatency kernel. Our tested consists of OAI eNB, EPC and HSS running on a single host. But, the process is similar for environment with OAI EPC and HSS on a different host than the OAI eNB.
 
 Hardware:
  * Laptop with Intel® Core™ i7-5600U CPU @ 2.60GHz × 4
@@ -39,7 +39,7 @@ Hardware:
 
 Software:
  * Latest OAI eNB code from `develop` branch
- * Latest Openair-cn code from tag `v0.3.2`
+ * Latest Openair-cn code from tag `v0.3.2` and develop branch
  * protoc (Version 3.1.0)
  * protobuf-c (Version 1.2.1)
 
