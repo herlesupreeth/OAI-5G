@@ -164,6 +164,12 @@ int udp_eNB_create_socket(int port, char *ip_addr, task_id_t task_id)
   sd = socket(AF_INET, SOCK_DGRAM, 0);
   AssertFatal(sd > 0, "UDP: Failed to create new socket: (%s:%d)\n", strerror(errno), errno);
 
+  int enable = 1;
+  if ((rc = setsockopt (sd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof (int))) < 0) {
+    close(sd);
+    AssertFatal(rc >= 0, "Error setting socket options\n");
+  }
+
   memset(&sin, 0, sizeof(struct sockaddr_in));
   sin.sin_family      = AF_INET;
   sin.sin_port        = htons(port);
